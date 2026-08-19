@@ -328,7 +328,7 @@ def load_full_frames(cfg: DataConfig) -> tuple[np.ndarray, np.ndarray, list[Path
     frames_list = [_read_fits(p) for p in obs_paths]
     frames = np.zeros((len(frames_list), max(frame.shape[0] for frame in frames_list), max(frame.shape[1] for frame in frames_list)))
     for i, frame in enumerate(frames_list):
-        frames[i, :frame.shape[0], :frame.shape[1]] = frame
+        frames[i, -frame.shape[0]:, -frame.shape[1]:] = frame
 
     disk_path = data_dir / cfg.disk_model_path
     disk_full = _translate_model_np(np.nan_to_num(_read_fits(disk_path)), cfg.disk_model_shift_xy)
@@ -462,15 +462,10 @@ def load_epoch_data(cfg: DataConfig) -> EpochData:
     region = np.nan_to_num(region)
 
     # ------------------------------------------------------------ positions --
-    if cfg.galaxy_positions_xy is not None:
-        initial_full = np.asarray(cfg.galaxy_positions_xy, dtype=np.float64)
-    else:
-        initial_full = None
-        if cfg.galaxy_positions_csv is not None:
-            csv_path = Path(cfg.data_dir) / cfg.galaxy_positions_csv
-            if csv_path.exists():
-                initial_full = read_positions_csv(csv_path, len(frames))
-                log.info("initial galaxy positions from %s", csv_path)
+    csv_path = Path(cfg.data_dir) / "galaxy_positions.csv"
+    if csv_path.exists():
+        initial_full = read_positions_csv(csv_path, len(frames))
+        log.info("initial galaxy positions from %s", csv_path)
     initial_region = None if initial_full is None else initial_full - np.array([x0, y0])
     galaxy_region = torch.from_numpy(region - disk_region[None])
     pos_region = refine_galaxy_positions(galaxy_region, initial_region)
