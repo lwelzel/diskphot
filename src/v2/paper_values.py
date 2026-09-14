@@ -81,7 +81,10 @@ DEFAULT_EXTRAS = {
                                    # wins: the script's OFFSET_HALFWIDTH is
                                    # 1.5 -- check which one the run used)
     "noise_scale_range": None,     # log-uniform f prior bounds (MODEL_CARD)
-    "n_live": 512,
+    "n_live": 512,                 # NOTE: the v16 run script sets
+                                   # min_num_live_points=521; confirm which
+                                   # value the production run used and pass
+                                   # it via --extras if it differs
     "msr": None,                   # mean squared standardized residual,
                                    # NOMINAL noise model
     "msr_scaled": None,            # ... under the fitted noise scales
@@ -637,8 +640,8 @@ def main(argv=None):
     put("NTemplatePix", str(npix) if npix else r"\textbf{??}", npix)
 
     # ---- template prior --------------------------------------------------
-    put("Lam", fmt_pow(card.get("lam"), 3), card.get("lam"))
-    put("SigmaG", fmt_pow(card.get("sigma_g"), 2), card.get("sigma_g"))
+    put("Lam", fmt_plain(card.get("lam"), 3), card.get("lam"))
+    put("SigmaG", fmt_plain(card.get("sigma_g"), 2), card.get("sigma_g"))
     put("LamRel", fmt_pow(extras["lam_rel_init"], 1), extras["lam_rel_init"])
     put("TauHi", fmt_plain(extras["tau_hi"], 1), extras["tau_hi"])
     put("OffsetBound", fmt_plain(extras["offset_halfwidth"], 2),
@@ -889,7 +892,7 @@ def main(argv=None):
             r"\begin{table}",
             r"\caption{Per-epoch noise scales: posterior median and "
             r"16--84\,\% interval of $f_{i}$, its square, the mean squared "
-            r"standardized residual of epoch $i$ at the posterior median "
+            r"standardised residual of epoch $i$ at the posterior median "
             r"under the nominal noise model of \autoref{eq:perpixel_noise} "
             r"(MSR$_{i}$) and under the fitted scales "
             r"(MSR$_{i}/f_{i}^{2}$), and the number of weighted pixels "
@@ -932,7 +935,7 @@ def main(argv=None):
                 row["dlnZ_vs_run"])
         put(f"{suf}ESS", f"{row['ess']:.0f}", row["ess"])
         label = {"Base": r"run prior (flat $\tau'$, $\lambda$)",
-                 "LamTenth": r"$\lambda/10$\tablefootmark{a}",
+                 "LamTenth": r"$\lambda/10$",
                  "LamThird": r"$\lambda/3$", "LamThree": r"$3\lambda$",
                  "LamTen": r"$10\lambda$",
                  "SoftLog": r"soft-log $\tau'$ prior"}[suf]
@@ -954,10 +957,11 @@ def main(argv=None):
             r"\hline", *srow_tex, r"\hline",
             r"\end{tabular}",
             r"\tablefoot{ESS is the raw Kish effective sample size of the "
-            r"importance weights (the overlap diagnostic); quantiles of the "
-            r"$\lambda$ rungs use the Rao--Blackwellized weights. "
-            r"\tablefoottext{a}{Indicative only: the raw ESS of this rung "
-            r"is too small for a precise quantile.}}",
+            r"importance weights over the $16\,384$ points resampled (with "
+            r"replacement) from the weighted posterior, whose own effective "
+            r"sample size is \VgESS{} (the overlap diagnostic); the "
+            r"quantiles of the $\lambda$ rungs use the Rao--Blackwellised "
+            r"weights of \autoref{sec:method_validation}.}",
             r"\end{table}", ""])
         (out_dir / "table_sensitivity.tex").write_text(table_sens)
 
