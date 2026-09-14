@@ -31,7 +31,7 @@ gs0304  GS03 and GS04 combined, 1 row x 4 columns with a horizontal
         Replaces figures/GS03.jpg + figures/GS04.eps.
 diskalma
         All eight epochs combined into one galaxy-free disk image, with
-        the ARKS ALMA 1.3 mm continuum contours of the same disk
+        the ARKS ALMA band 6+7 (1.0 mm reference) continuum contours of the same disk
         overlaid.  Each epoch is masked with the pipeline galaxy ellipse
         (margin-enlarged) at its own measured position *before* the
         registration step, so the mask rides along with any integer-slip
@@ -122,7 +122,7 @@ GAL_ASPECT_STACK = 2.5          # stretch of the mask ellipse's (margined)
                                 # perpendicular, so the refill still works)
 ALMA_FILES = ("hd107146_contours.json", "hd107146_contours.npz")
 ALMA_SUBDIR = Path("literature_data") / "arks_alma" / "extracted"
-ALMA_LABEL = "ALMA 1.3\u2009mm"          # ARKS band-6 continuum
+ALMA_LABEL = "ALMA 1.0\u2009mm (B6+B7)"  # ARKS band 6+7 multi-frequency image, 300 GHz reference (Marino et al. 2026)
 ALMA_LEVELS_DEFAULT = (5, 18, 24)  # sigma levels drawn by default (the file
                                 # also carries 30; --alma-levels overrides)
 ALMA_BEAM_FWHM_ARCSEC = 0.819   # circular; vector beam circle of the gallery
@@ -957,7 +957,7 @@ def fig_gs0304(module_path, out_dir, log_dir=None, rep_epoch=2,
 
 
 # --------------------------------------------------------------------------- #
-# diskalma: all-epoch galaxy-free stack + ARKS ALMA 1.3 mm contours
+# diskalma: all-epoch galaxy-free stack + ARKS ALMA band 6+7 (1.0 mm) contours
 # --------------------------------------------------------------------------- #
 def _resolve_alma(alma):
     """Path of the contour extraction: ``--alma`` may be the file, its
