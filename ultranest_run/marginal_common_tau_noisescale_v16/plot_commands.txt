@@ -1,0 +1,8 @@
+# including noise
+
+uv run /home/lwelzel/git/diskphot/src/v2/paper_values.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --out-dir /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/extra --module /home/lwelzel/git/diskphot/src/v2/self_sufficient_ultranest.py --evaluate
+
+# --albedo 0.1 is important (!) below!
+uv run /home/lwelzel/git/diskphot/src/v2/paper_figures.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --module /home/lwelzel/git/diskphot/src/v2/self_sufficient_ultranest.py --lit-dir /home/lwelzel/git/diskphot/literature_data --out-dir /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/plots --max-samples 2000 --albedo 0.1
+
+uv run /home/lwelzel/git/diskphot/src/v2/paper_figures_schneider.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --module /home/lwelzel/git/diskphot/src/v2/self_sufficient_ultranest.py --out-dir /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/plots --arc-halfwidth 24 --profile-sigma 0.5 --alma /home/lwelzel/git/diskphot/literature_data/arks_alma/extracted --combine median

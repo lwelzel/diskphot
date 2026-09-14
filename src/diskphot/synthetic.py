@@ -1,41 +1,19 @@
-"""Synthetic epoch sets for validation and calibration.
-
-The generator is a parametric bootstrap of the fitted model: synthetic
-epochs are built from the joint forward model with the *empirical* galaxy
-template (the exactly profiled template of the null model at the fitted
-offsets, so injections carry the true galaxy morphology, bulge sharpness
-included), the measured epoch geometry and disk cutouts, randomized true
-sub-pixel offsets, and noise drawn from the same per-pixel variance maps
-that weight the fit.
-
-Baseline noise is independent Gaussian per pixel -- matched to the fitted
-likelihood, which makes these simulations the correct calibration of the
-profile-likelihood statistics *under the stated model*.  To probe
-robustness against likelihood misspecification the generator also provides
-stress variants (``CalibConfig.noise_model``): spatially correlated noise,
-misscaled variance, and non-Gaussian outliers, plus a worst-case option
-placing every true offset at a half-pixel shift.
-"""
+"""Synthetic epochs for injection--recovery calibration and roundtrips."""
 
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass
+import dataclasses
 
 import numpy as np
 import torch
 
-from .config import CalibConfig, CGConfig, ProfileConfig, Variant
+from .config import CalibConfig, ProfileConfig, SolveConfig, Variant
 from .data import EpochData
 from .model import JointLogLikelihood
-from .transforms import shift2d
-
-log = logging.getLogger(__name__)
-
-__all__ = ["SyntheticTruth", "empirical_template", "simulate_epochs"]
+from .transforms import shift
 
 
-@dataclass(slots=True)
+@dataclasses.dataclass
 class SyntheticTruth:
     tau: np.ndarray  #: injected tau (scalar in an array, or per-epoch)
     offsets_xy: np.ndarray  #: (R, N, 2) true residual offsets (epoch 0 = 0)
@@ -44,109 +22,86 @@ class SyntheticTruth:
 def empirical_template(
     data: EpochData,
     profile: ProfileConfig | None = None,
-    cg: CGConfig | None = None,
+    solve: SolveConfig | None = None,
 ) -> tuple[torch.Tensor, np.ndarray]:
     """Exactly profiled null-model template at the fitted offsets.
 
     Returns ``(template, delta_hat)`` with the template in the epoch-0
-    frame and the fitted null-model offsets (used to centre the injected
-    truths on the data's registration solution).
+    frame; injected truths are centred on the data's registration solution.
     """
     from .inference import fit_offsets  # local import to avoid a cycle
 
     profile = profile or ProfileConfig()
-    model = JointLogLikelihood(data, Variant.NULL, cg)
+    model = JointLogLikelihood(data, Variant.NULL, solve or SolveConfig())
     res = fit_offsets(model, profile)
-    theta = torch.as_tensor(res.theta, dtype=data.mask.dtype, device=data.mask.device)
+    theta = torch.as_tensor(res.theta[0], dtype=data.mask.dtype, device=data.mask.device)
     template = model.maps(theta)["template"]
     return template, res.theta[0].reshape(-1, 2)
 
 
-def _correlated_noise(
-    shape: tuple[int, ...],
-    sigma_px: float,
-    gen: torch.Generator,
-    like: torch.Tensor,
-) -> torch.Tensor:
-    """Unit-variance Gaussian noise with a Gaussian correlation kernel."""
-    white = torch.randn(shape, generator=gen).to(like)
-    radius = max(1, int(3.0 * sigma_px))
-    x = torch.arange(-radius, radius + 1, dtype=like.dtype, device=like.device)
-    k = torch.exp(-0.5 * (x / sigma_px) ** 2)
-    k = k / torch.sqrt((k * k).sum())  # preserve per-pixel variance
-    flat = white.reshape(-1, 1, *shape[-2:])
-    flat = torch.nn.functional.conv2d(flat, k.view(1, 1, 1, -1), padding=(0, radius))
-    flat = torch.nn.functional.conv2d(flat, k.view(1, 1, -1, 1), padding=(radius, 0))
-    return flat.reshape(shape)
+def _noise(data: EpochData, n: int, calib: CalibConfig, gen: torch.Generator) -> torch.Tensor:
+    """(R, N, H, W) noise draws under the requested stress model (CPU draws)."""
+    sig = data.variance.sqrt()
+    eps = torch.randn((n, *data.variance.shape), generator=gen, dtype=sig.dtype)
+    if calib.noise_model == "correlated":
+        from scipy.ndimage import gaussian_filter
+
+        arr = eps.numpy()
+        arr = gaussian_filter(arr, sigma=(0, 0, calib.corr_sigma_px, calib.corr_sigma_px))
+        arr /= arr.std(axis=(-2, -1), keepdims=True).clip(min=1e-30)
+        eps = torch.as_tensor(arr, dtype=sig.dtype)
+    noise = sig * eps.to(sig.device)
+    if calib.noise_model == "scaled":
+        noise = noise * float(np.sqrt(calib.variance_scale))
+    elif calib.noise_model == "outliers":
+        hit = torch.rand(noise.shape, generator=gen) < calib.outlier_frac
+        sgn = torch.sign(torch.randn(noise.shape, generator=gen, dtype=sig.dtype))
+        noise = torch.where(hit.to(sig.device),
+                            noise + calib.outlier_sigma * sig * sgn.to(sig.device), noise)
+    return noise
 
 
 def simulate_epochs(
     data: EpochData,
     tau: float | np.ndarray,
     template: torch.Tensor,
-    n_realizations: int = 1,
-    variant: Variant = Variant.COMMON,
-    calib: CalibConfig | None = None,
+    n_realizations: int,
+    variant: Variant,
+    calib: CalibConfig,
     add_noise: bool = True,
     seed: int = 0,
 ) -> tuple[torch.Tensor, SyntheticTruth]:
-    """Forward-model synthetic epoch stacks with known truths.
+    """Draw ``(R, N, H, W)`` disk-subtracted synthetic epochs.
 
-    Returns ``(observations, truth)`` with observations of shape
-    ``(R, N, H, W)``: ``disk + T(tau) * shift(template) + noise`` on the
-    native grids, using the same disk cutouts and per-pixel variance maps
-    as the real data.  The true total shift of epoch ``i`` is the nominal
-    geometry plus the drawn residual offset (epoch 0 pinned at zero).
+    The template is shifted by nominal + true offsets, attenuated by the
+    injected transmission, and (optionally) perturbed with noise from the
+    per-pixel variance maps under the configured stress model.
     """
-    calib = calib or CalibConfig()
+    dev = data.mask.device
     gen = torch.Generator(device="cpu").manual_seed(seed)
     n = data.n_epochs
-    r = int(n_realizations)
-    g = template.to(data.observations)
-    h, w = g.shape[-2:]
+    hh, ww = data.mask.shape[-2:]
 
-    offsets = torch.zeros(r, n, 2)
     if calib.half_pixel_offsets:
-        signs = torch.where(torch.rand((r, n - 1, 2), generator=gen) < 0.5, -0.5, 0.5)
-        offsets[:, 1:] = signs
+        off = torch.full((n_realizations, n, 2), 0.5, dtype=data.mask.dtype)
+        off *= torch.sign(torch.randn(off.shape, generator=gen, dtype=off.dtype))
     else:
-        offsets[:, 1:] = calib.offset_sigma_px * torch.randn((r, n - 1, 2), generator=gen)
-    offsets = offsets.to(g)
-    shifts = data.nominal_shift_xy.unsqueeze(0) + offsets
+        off = calib.offset_sigma_px * torch.randn(
+            (n_realizations, n, 2), generator=gen, dtype=data.mask.dtype
+        )
+    off[:, 0] = 0.0
+    off = off.to(dev)
 
-    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
-    if variant in (Variant.PER_EPOCH, Variant.GREY) and tau_arr.size == 1:
-        tau_arr = np.full(n, tau_arr[0])
-    tau_t = torch.as_tensor(tau_arr, dtype=g.dtype, device=g.device)
-    if variant is Variant.COMMON:
-        exponent = tau_t.view(1, 1, 1, 1) * data.disk_hat.unsqueeze(0)
-    elif variant is Variant.PER_EPOCH:
-        exponent = tau_t.view(1, n, 1, 1) * data.disk_hat.unsqueeze(0)
-    elif variant is Variant.GREY:
-        exponent = tau_t.view(1, n, 1, 1).expand(1, n, h, w)
-    else:
-        exponent = torch.zeros(1, n, h, w, dtype=g.dtype, device=g.device)
-    transmission = torch.exp(-exponent)
+    taus = np.atleast_1d(np.asarray(tau, dtype=float))
+    model = JointLogLikelihood(data, variant, SolveConfig())
+    tpar = torch.as_tensor(
+        np.broadcast_to(taus, (1, model.n_tau_params)).copy(),
+        dtype=data.mask.dtype, device=dev,
+    ) if model.n_tau_params else torch.zeros((1, 0), dtype=data.mask.dtype, device=dev)
+    t = model.transmission(tpar)                       # (1, N, ...)
 
-    shifted = shift2d(
-        g.expand(r * n, h, w).contiguous(), shifts.reshape(r * n, 2)
-    ).view(r, n, h, w)
-    obs = data.disk.unsqueeze(0) + transmission * shifted
-
-    if add_noise:
-        var = data.variance.unsqueeze(0)
-        if calib.noise_model == "scaled":
-            var = var * calib.variance_scale
-        if calib.noise_model == "correlated":
-            unit = _correlated_noise((r, n, h, w), calib.corr_sigma_px, gen, obs)
-        else:
-            unit = torch.randn((r, n, h, w), generator=gen).to(obs)
-        noise = unit * torch.sqrt(var)
-        if calib.noise_model == "outliers":
-            hit = torch.rand((r, n, h, w), generator=gen).to(obs) < calib.outlier_frac
-            sign = torch.where(torch.rand((r, n, h, w), generator=gen) < 0.5, -1.0, 1.0).to(obs)
-            noise = noise + hit * sign * calib.outlier_sigma * torch.sqrt(var)
-        obs = obs + noise
-
-    truth = SyntheticTruth(tau=tau_arr, offsets_xy=offsets.cpu().numpy())
-    return obs.contiguous(), truth
+    shifts = (data.nominal_shift_xy.unsqueeze(0) + off).reshape(-1, 2)
+    g = template.reshape(1, 1, hh, ww).expand(n_realizations, n, hh, ww)
+    clean = t * shift(g.reshape(-1, hh, ww), shifts).reshape(n_realizations, n, hh, ww)
+    obs = clean + _noise(data, n_realizations, calib, gen).to(dev) if add_noise else clean
+    return obs, SyntheticTruth(tau=taus, offsets_xy=off.cpu().numpy())

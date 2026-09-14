@@ -98,36 +98,31 @@ class DataConfig:
 
 
 @dataclass(slots=True)
-class CGConfig:
-    """Template solve settings (direct certified path + loose CG search).
+class SolveConfig:
+    """Exact template solve: ridge-regularized dense normal equations.
 
-    Every log-likelihood that enters a reported statistic is evaluated with
-    an *exact dense direct solve* of the template normal equations (the
-    cutout has only ~1e3 pixels), built from the same matrix-free shift
-    operator as CG -- see ``JointLogLikelihood._solve_direct``.  The
-    conjugate-gradient path with the loose ``opt_*`` stopping settings is
-    used only inside optimizer steps, where cheap approximate objectives
-    and gradients suffice.
+    One solver, used everywhere (optimizer steps and reported values).  The
+    normal matrix ``H`` lives on the cutout (~1e3 pixels); its columns are
+    assembled with torch's native grid sampler -- the same operator as the
+    forward model -- and the system is factorized by batched Cholesky in
+    float64 after adding a tiny *relative* ridge.  ``H`` is positive
+    semi-definite but genuinely singular on the aperture (masked
+    checkerboard modes near half-pixel shifts), so the ridge selects a
+    deterministic minimum-energy solution; it perturbs the profiled
+    chi-square at the ~1e-5 level, identically for observed and simulated
+    data, so the simulation-calibrated statistics are unaffected.
     """
 
-    #: Accuracy target of reported profiled log-likelihoods, used as the
-    #: verification tolerance when the direct solve is cross-checked
-    #: against an independent dense build (``diskphot verify``).
-    tol_chi2: float = 1.0e-3
-    #: Relative eigenvalue cutoff of the direct pseudo-inverse.  Near
-    #: machine precision: every genuinely constrained mode (however weak)
-    #: must enter the profile value; only the numerical null space
-    #: (masked checkerboard modes at half-pixel shifts) is dropped.
-    rcond: float = 1.0e-13
-    #: Loose CG: never stop before this many iterations.
-    min_iters: int = 20
-    #: Loose CG: trailing-window length of the stopping heuristic.
-    window: int = 8
-    #: Loose CG: stop once the rate-corrected estimate of the remaining
-    #: chi-square decrease falls below this.
-    opt_tol_chi2: float = 3.0e-2
-    #: Loose CG: iteration cap.
-    opt_max_iters: int = 120
+    #: Relative ridge added to H (times its largest diagonal entry).
+    ridge: float = 1.0e-12
+    #: Batch members per chunk during H assembly (memory guard: each chunk
+    #: materializes ``chunk * npix`` cutout images per epoch pass).
+    chunk: int = 8
+    #: During optimization, re-solve the template every this many steps
+    #: (block-coordinate descent with the envelope gradient in between;
+    #: 1 = fresh exact solve at every step).  Best-point tracking and all
+    #: reported log-likelihoods always use a fresh solve.
+    resolve_every: int = 10
 
 
 @dataclass(slots=True)
@@ -226,7 +221,7 @@ class FitConfig:
 
     variant: Variant = Variant.COMMON
     data: DataConfig = field(default_factory=DataConfig)
-    cg: CGConfig = field(default_factory=CGConfig)
+    solve: SolveConfig = field(default_factory=SolveConfig)
     profile: ProfileConfig = field(default_factory=ProfileConfig)
     calib: CalibConfig = field(default_factory=CalibConfig)
     explore: ExploreConfig = field(default_factory=ExploreConfig)
@@ -286,7 +281,7 @@ def _deserialize(cls: type, payload: Any) -> Any:
 
 _NESTED = {
     "DataConfig": lambda v: _deserialize(DataConfig, v),
-    "CGConfig": lambda v: _deserialize(CGConfig, v),
+    "SolveConfig": lambda v: _deserialize(SolveConfig, v),
     "ProfileConfig": lambda v: _deserialize(ProfileConfig, v),
     "CalibConfig": lambda v: _deserialize(CalibConfig, v),
     "ExploreConfig": lambda v: _deserialize(ExploreConfig, v),
