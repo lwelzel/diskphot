@@ -81,7 +81,7 @@ DEFAULT_EXTRAS = {
                                    # wins: the script's OFFSET_HALFWIDTH is
                                    # 1.5 -- check which one the run used)
     "noise_scale_range": None,     # log-uniform f prior bounds (MODEL_CARD)
-    "n_live": 512,                 # NOTE: the v16 run script sets
+    "n_live": 521,                 # NOTE: the v16 run script sets
                                    # min_num_live_points=521; confirm which
                                    # value the production run used and pass
                                    # it via --extras if it differs
@@ -679,9 +679,9 @@ def main(argv=None):
         else r"\textbf{??}", vsl)
     put("NModes", str(int(extras["n_modes_above_lam"])),
         extras["n_modes_above_lam"])
-    put("HCond", fmt_pow(extras["h_cond_unridged"], 1),
+    put("HCond", fmt_plain(extras["h_cond_unridged"], 2),
         extras["h_cond_unridged"])
-    put("FmaxDlnL", fmt_pow(extras["f32_max_dlnl"], 1),
+    put("FmaxDlnL", fmt_pow(extras["f32_max_dlnl"], 2),
         extras["f32_max_dlnl"])
     nsi = extras.get("noise_scale_identity")
     put("NoiseScaleIdentity", fmt_pow(nsi, 1) if nsi is not None
@@ -987,11 +987,13 @@ def main(argv=None):
         table_sl = "\n".join([
             r"\begin{table}",
             r"\caption{Per-epoch sightlines: stellocentric radius of the "
-            r"galaxy, local normalized disk surface brightness $\hat{D}$ "
+            r"galaxy, local normalised disk surface brightness $\hat{D}$ "
             r"(mean within 2\,px), the $95\%$ upper limit on the sightline "
             r"optical depth $\tau_{i} = \tau^{\prime}\hat{D}$, and the "
             r"implied column-density limit for the grain assumptions of "
-            r"the text.}",
+            r"the text. The columns are along the line of sight through "
+            r"the inclined disk; multiply by $\cos i = 0.94$ for the "
+            r"vertical column.}",
             r"\label{tab:sightlines}",
             r"\centering",
             r"\begin{tabular}{lcccc}",

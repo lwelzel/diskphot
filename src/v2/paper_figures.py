@@ -1237,10 +1237,16 @@ def fig_comparison(log_dir, lit_dir, out_dir, albedo=0.5,
     comp = json.loads(comp_path.read_text())
     asm = comp["assumptions"]
 
-    # Ardila et al. (2004) measure the scattering product omega*tau; with an
-    # assumed albedo, tau = (omega tau) / omega, and the same mass-opacity
-    # closure as our own points (kappa_ext = 3 Q_ext / (4 rho a)) gives
-    # Sigma = (omega tau) 4 rho a / (3 Q_ext omega).  The extraction
+    # Ardila et al. (2004) measure the scattering product omega*tau, where
+    # tau is the GEOMETRIC optical depth of the paper's eq. (sb_relation)
+    # and omega the albedo relative to the geometric cross section.  With an
+    # assumed albedo, tau_geo = (omega tau) / omega, and the mass column is
+    # Sigma = tau_geo 4 rho a / 3 = (omega tau) 4 rho a / (3 omega): no
+    # Q_ext here -- Q_ext = 2 enters only the ATTENUATION columns, whose
+    # tau' is an extinction optical depth (Sigma = tau' / kappa_ext with
+    # kappa_ext = 3 Q_ext / (4 rho a)).  An earlier version divided the
+    # scattering columns by Q_ext as well, which put them a factor 2 too
+    # low for a given omega.  The extraction
     # (extract_f3.py) stores ABSOLUTE omega*tau, already corrected for the
     # erratum (Ardila et al. 2005: the 2004 values are 1600/4pi = 127.3
     # too small) -- NOT the printed axis value, whose unit is 1e-6, and
@@ -1251,7 +1257,7 @@ def fig_comparison(log_dir, lit_dir, out_dir, albedo=0.5,
     # distribution effective radius, as in the van Sluijs 2018 rendering).
     a_sc = scatter_a_cm if scatter_a_cm else asm["grain_a_cm"]
     conv = np.log10(1.0e4 * 4.0 * asm["grain_rho_gcc"] * a_sc
-                    / (3.0 * asm["q_ext"] * albedo))
+                    / (3.0 * albedo))
     dy_vs = np.log10(asm["grain_rho_gcc"] / VS_RHO_GCC)   # see VS_RHO_GCC
 
     c_v, c_i, c_han, c_dpl, c_spl, c_gap = palette(6, 0.18, 0.88)
