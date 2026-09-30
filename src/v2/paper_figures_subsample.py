@@ -9,7 +9,6 @@ directory may be given as the second argument):
   corner.pdf          offsets + tau' (15 parameters), replaces the 23-parameter corner
   corner_noise.pdf    ln f_0..ln f_7 + tau' (9 parameters), for the appendix
   tau_marginal.pdf    marginal posterior of tau' with quantiles, the 95% limit and the
-                      soft-log-prior reweighted density
 """
 import json, sys, math
 from pathlib import Path
@@ -63,20 +62,16 @@ cornerfig(cols_lnf + ["tau"], "corner_noise")
 # 3) tau' marginal
 tau = df["tau"].to_numpy(dtype=float)
 ts = pv["tau"]                                       # official numbers (full chain)
-tau_hi, tau_soft = pv["extras"]["tau_hi"], ts["soft"]["tau_soft"]
+tau_hi = pv["extras"]["tau_hi"]
 grid = np.linspace(0.0, 0.02, 1500)
 dens = reflected_kde(tau, grid)
-w_soft = 1.0 / (tau + tau_soft)
-dens_soft = reflected_kde(tau, grid, weights=w_soft)
-c_post, c_soft = pf.palette(2, 0.25, 0.85)
+c_post = pf.palette(2, 0.25, 0.85)[0]
 pf.apply_style()
 fig, ax = plt.subplots(figsize=(4.6, 3.0))
 ax.hist(tau, bins=np.linspace(0, 0.02, 61), density=True, color=c_post, alpha=0.25,
         lw=0, label=None)
 ax.plot(grid, dens, color=c_post, lw=1.6, label=r"flat prior on $[0, %g]$" % tau_hi)
-ax.plot(grid, dens_soft, color=c_soft, lw=1.2, ls="--",
-        label=r"soft-log prior, $\tau_{\rm soft} = 10^{-2}$ (reweighted)")
-ymax = 1.12 * max(dens.max(), dens_soft.max())
+ymax = 1.12 * dens.max()
 for q, lab, ls in ((ts["p16"], "16", ":"), (ts["median"], "50", "-"), (ts["p84"], "84", ":")):
     ax.axvline(q, color="0.35", lw=0.8, ls=ls)
 ax.axvline(ts["ul95"], color="crimson", lw=1.1, ls="-.")

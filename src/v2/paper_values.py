@@ -564,8 +564,8 @@ def evaluate_run(module_path, theta_med, tau_samples, extras, layout):
 VARIANT_SUFFIX = [
     ("run prior", "Base"), ("lam x 0.1", "LamTenth"),
     ("lam x 0.333", "LamThird"), ("lam x 3", "LamThree"),
-    ("lam x 10", "LamTen"), ("soft-log", "SoftLog"),
-]
+    ("lam x 10", "LamTen"),
+]   # the soft-log tau prior variant of sensitivity.json is not reported in the paper
 
 
 def main(argv=None):
