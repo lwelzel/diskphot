@@ -528,7 +528,7 @@ def _plot_disk_track(disk, q_full, out_dir, t_span=(2004.0, 2028.0),
             cols = np.any(up >= 0.1 * lv, axis=0)
             x_left = (float(np.min(xo[cols] - template_center[0])) * scale
                       + p04[0]) if cols.any() else p04[0] - 0.5
-            ax.text(x_left - 0.08, p04[1], r"template $\hat{g}$",
+            ax.text(x_left - 0.08, p04[1], r"template $\hat{G}$",
                     color="white", fontsize=6.5, ha="right", va="center",
                     zorder=6, path_effects=stroke)
 
@@ -751,7 +751,7 @@ def _plot_residuals(obs, model, chi, g, q_cut, offsets, out_dir,
     ax_t.add_patch(Ellipse((0.0, 0.0), 2 * (9 + 1.5), 2 * (5 + 1.5),
                            angle=35, fill=False, ls="--", lw=0.9,
                            ec="white"))
-    ax_t.text(0.04, 0.965, r"template $\hat{g}$",
+    ax_t.text(0.04, 0.965, r"template $\hat{G}$",
               transform=ax_t.transAxes, ha="left", va="top", fontsize=9,
               color="black")
     ax_t.set_xlabel(r"$\Delta x$ [px]")
@@ -803,7 +803,7 @@ def _plot_residuals(obs, model, chi, g, q_cut, offsets, out_dir,
     ax_t.set_yticks([-10, -5, 0, 5, 10])
 
     cb = fig.colorbar(im_img, cax=cax_img)
-    cb.set_label(r"$y{+}D,\;m{+}D,\;\hat{g}$ [counts s$^{-1}$ px$^{-1}$]",
+    cb.set_label(r"$y{+}D,\;m{+}D,\;\hat{G}$ [counts s$^{-1}$ px$^{-1}$]",
                  fontsize=8)
     cb.ax.tick_params(labelsize=6.5)
     cbr = fig.colorbar(im_res, cax=cax_res)

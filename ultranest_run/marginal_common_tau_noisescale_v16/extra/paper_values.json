@@ -376,10 +376,6 @@
   "LamTenULShift": -26.00620175580962,
   "LamTenDlnZ": 154.5577538454573,
   "LamTenESS": 3221.528821186067,
-  "SoftLogUL": 0.008374412204182826,
-  "SoftLogULShift": -8.640789605136446,
-  "SoftLogDlnZ": 2.798635386447719,
-  "SoftLogESS": 15840.086785046313,
   "sightlines": [
     {
       "epoch": "EP0",
