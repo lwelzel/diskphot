@@ -68,10 +68,12 @@ dens = reflected_kde(tau, grid)
 c_post = pf.palette(2, 0.25, 0.85)[0]
 pf.apply_style()
 fig, ax = plt.subplots(figsize=(4.6, 3.0))
-ax.hist(tau, bins=np.linspace(0, 0.02, 61), density=True, color=c_post, alpha=0.25,
-        lw=0, label=None)
-ax.plot(grid, dens, color=c_post, lw=1.6, label=r"flat prior on $[0, %g]$" % tau_hi)
-ymax = 1.12 * dens.max()
+norm = dens.max()                                    # peak-normalised density
+bins = np.linspace(0, 0.02, 61)
+ax.hist(tau, bins=bins, weights=np.full(tau.size, 1.0 / (tau.size * (bins[1] - bins[0]) * norm)),
+        color=c_post, alpha=0.25, lw=0, label=None)
+ax.plot(grid, dens / norm, color=c_post, lw=1.6, label=r"flat prior on $[0, %g]$" % tau_hi)
+ymax = 1.12
 for q, lab, ls in ((ts["p16"], "16", ":"), (ts["median"], "50", "-"), (ts["p84"], "84", ":")):
     ax.axvline(q, color="0.35", lw=0.8, ls=ls)
 ax.axvline(ts["ul95"], color="crimson", lw=1.1, ls="-.")
@@ -84,7 +86,7 @@ ax.set_xticks([0, 0.005, 0.010, 0.015, 0.020])
 ax.set_xticklabels(["0", "0.005", "0.010", "0.015", "0.020"])
 ax.set_ylim(0, ymax)
 ax.set_xlabel(r"$\tau^{\prime}$ (optical depth at the surface-brightness peak)")
-ax.set_ylabel("posterior density")
+ax.set_ylabel("posterior density (peak = 1)")
 ax.legend(loc="upper right", fontsize=7.5, frameon=False)
 pf.save(fig, OUT, "tau_marginal")
 

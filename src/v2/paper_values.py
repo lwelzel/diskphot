@@ -816,9 +816,7 @@ def main(argv=None):
                 f"${dy:.{dd}f} \\pm {sy:.{dd}f}$ \\\\")
         table_offsets = "\n".join([
             r"\begin{table}",
-            r"\caption{Posterior registration offsets $\delta_{i}$ relative "
-            r"to the nominal galaxy positions (epoch-0 gauge), in STIS "
-            r"pixels: medians with posterior standard deviations.}",
+            r"\caption{Posterior registration offsets.}",
             r"\label{tab:offsets}",
             r"\centering",
             r"\begin{tabular}{lcc}",
@@ -826,6 +824,9 @@ def main(argv=None):
             r"Epoch & $\delta x$ [px] & $\delta y$ [px] \\",
             r"\hline", *rows, r"\hline",
             r"\end{tabular}",
+            r"\tablefoot{$\delta_{i}$ relative to the nominal galaxy positions "
+            r"(epoch-0 gauge), in STIS pixels: medians with posterior "
+            r"standard deviations.}",
             r"\end{table}", ""])
         (out_dir / "table_offsets.tex").write_text(table_offsets)
     else:
@@ -890,13 +891,7 @@ def main(argv=None):
             rows.append(" & ".join(cells) + r" \\")
         table_noise = "\n".join([
             r"\begin{table}",
-            r"\caption{Per-epoch noise scales: posterior median and "
-            r"16--84\,\% interval of $f_{i}$, its square, the mean squared "
-            r"standardised residual of epoch $i$ at the posterior median "
-            r"under the nominal noise model of \autoref{eq:perpixel_noise} "
-            r"(MSR$_{i}$) and under the fitted scales "
-            r"(MSR$_{i}/f_{i}^{2}$), and the number of weighted pixels "
-            r"$n_{i}$.}",
+            r"\caption{Per-epoch noise scales and goodness of fit.}",
             r"\label{tab:noise}",
             r"\centering",
             r"\begin{tabular}{lccccc}",
@@ -905,6 +900,11 @@ def main(argv=None):
             r"MSR$_{i}/f_{i}^{2}$ & $n_{i}$ \\",
             r"\hline", *rows, r"\hline",
             r"\end{tabular}",
+            r"\tablefoot{$f_{i}$: posterior median and 16--84\,\% interval; "
+            r"MSR$_{i}$: mean squared standardised residual of epoch $i$ at "
+            r"the posterior median under the nominal noise model of "
+            r"\autoref{eq:perpixel_noise}, and MSR$_{i}/f_{i}^{2}$ under the "
+            r"fitted scales; $n_{i}$: number of weighted pixels.}",
             r"\end{table}", ""])
         (out_dir / "table_noise.tex").write_text(table_noise)
     else:
@@ -946,9 +946,7 @@ def main(argv=None):
     if srow_tex:
         table_sens = "\n".join([
             r"\begin{table}",
-            r"\caption{Prior sensitivity of the optical-depth constraint, "
-            r"computed from the single nested-sampling run by importance "
-            r"reweighting (\autoref{sec:method_validation}).}",
+            r"\caption{Prior sensitivity of the optical-depth limit.}",
             r"\label{tab:sensitivity}",
             r"\centering",
             r"\begin{tabular}{lccc}",
@@ -956,12 +954,13 @@ def main(argv=None):
             r"Variant & $\tau'_{95}$ & $\Delta\ln\mathcal{Z}$ & ESS \\",
             r"\hline", *srow_tex, r"\hline",
             r"\end{tabular}",
-            r"\tablefoot{ESS is the raw Kish effective sample size of the "
-            r"importance weights over the $16\,384$ points resampled (with "
-            r"replacement) from the weighted posterior, whose own effective "
-            r"sample size is \VgESS{} (the overlap diagnostic); the "
-            r"quantiles of the $\lambda$ rungs use the Rao--Blackwellised "
-            r"weights of \autoref{sec:method_validation}.}",
+            r"\tablefoot{Computed from the single nested-sampling run by "
+            r"importance reweighting (\autoref{app:sensitivity}). ESS is the "
+            r"raw Kish effective sample size of the importance weights over "
+            r"the $16\,384$ points resampled (with replacement) from the "
+            r"weighted posterior, whose own effective sample size is "
+            r"\VgESS{}; the quantiles of the $\lambda$ rungs use "
+            r"Rao--Blackwellised weights.}",
             r"\end{table}", ""])
         (out_dir / "table_sensitivity.tex").write_text(table_sens)
 
@@ -986,14 +985,7 @@ def main(argv=None):
                 for s in sightlines]
         table_sl = "\n".join([
             r"\begin{table}",
-            r"\caption{Per-epoch sightlines: stellocentric radius of the "
-            r"galaxy, local normalised disk surface brightness $\hat{D}$ "
-            r"(mean within 2\,px), the $95\%$ upper limit on the sightline "
-            r"optical depth $\tau_{i} = \tau^{\prime}\hat{D}$, and the "
-            r"implied column-density limit for the grain assumptions of "
-            r"the text. The columns are along the line of sight through "
-            r"the inclined disk; multiply by $\cos i = 0.94$ for the "
-            r"vertical column.}",
+            r"\caption{Per-epoch sightlines and optical-depth limits.}",
             r"\label{tab:sightlines}",
             r"\centering",
             r"\begin{tabular}{lcccc}",
@@ -1002,6 +994,13 @@ def main(argv=None):
             r"$\Sigma_{95}$ [g\,cm$^{-2}$] \\",
             r"\hline", *rows, r"\hline",
             r"\end{tabular}",
+            r"\tablefoot{$r$: projected stellocentric radius of the galaxy; "
+            r"$\hat{D}$: local normalised disk surface brightness (mean "
+            r"within 2\,px); $\tau_{i,95}$: $95\%$ upper limit on the "
+            r"sightline optical depth $\tau_{i} = \tau^{\prime}\hat{D}$; "
+            r"$\Sigma_{95}$: implied column density for the grain "
+            r"assumptions of \autoref{eq:kappa_ext}, along the line of sight "
+            r"(multiply by $\cos i = 0.94$ for the vertical column).}",
             r"\end{table}", ""])
         (out_dir / "table_sightlines.tex").write_text(table_sl)
 
