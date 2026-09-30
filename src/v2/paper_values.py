@@ -81,7 +81,10 @@ DEFAULT_EXTRAS = {
                                    # wins: the script's OFFSET_HALFWIDTH is
                                    # 1.5 -- check which one the run used)
     "noise_scale_range": None,     # log-uniform f prior bounds (MODEL_CARD)
-    "n_live": 512,
+    "n_live": 521,                 # NOTE: the v16 run script sets
+                                   # min_num_live_points=521; confirm which
+                                   # value the production run used and pass
+                                   # it via --extras if it differs
     "msr": None,                   # mean squared standardized residual,
                                    # NOMINAL noise model
     "msr_scaled": None,            # ... under the fitted noise scales
@@ -561,8 +564,8 @@ def evaluate_run(module_path, theta_med, tau_samples, extras, layout):
 VARIANT_SUFFIX = [
     ("run prior", "Base"), ("lam x 0.1", "LamTenth"),
     ("lam x 0.333", "LamThird"), ("lam x 3", "LamThree"),
-    ("lam x 10", "LamTen"), ("soft-log", "SoftLog"),
-]
+    ("lam x 10", "LamTen"),
+]   # the soft-log tau prior variant of sensitivity.json is not reported in the paper
 
 
 def main(argv=None):
@@ -637,8 +640,8 @@ def main(argv=None):
     put("NTemplatePix", str(npix) if npix else r"\textbf{??}", npix)
 
     # ---- template prior --------------------------------------------------
-    put("Lam", fmt_pow(card.get("lam"), 3), card.get("lam"))
-    put("SigmaG", fmt_pow(card.get("sigma_g"), 2), card.get("sigma_g"))
+    put("Lam", fmt_plain(card.get("lam"), 3), card.get("lam"))
+    put("SigmaG", fmt_plain(card.get("sigma_g"), 2), card.get("sigma_g"))
     put("LamRel", fmt_pow(extras["lam_rel_init"], 1), extras["lam_rel_init"])
     put("TauHi", fmt_plain(extras["tau_hi"], 1), extras["tau_hi"])
     put("OffsetBound", fmt_plain(extras["offset_halfwidth"], 2),
@@ -676,9 +679,9 @@ def main(argv=None):
         else r"\textbf{??}", vsl)
     put("NModes", str(int(extras["n_modes_above_lam"])),
         extras["n_modes_above_lam"])
-    put("HCond", fmt_pow(extras["h_cond_unridged"], 1),
+    put("HCond", fmt_plain(extras["h_cond_unridged"], 2),
         extras["h_cond_unridged"])
-    put("FmaxDlnL", fmt_pow(extras["f32_max_dlnl"], 1),
+    put("FmaxDlnL", fmt_pow(extras["f32_max_dlnl"], 2),
         extras["f32_max_dlnl"])
     nsi = extras.get("noise_scale_identity")
     put("NoiseScaleIdentity", fmt_pow(nsi, 1) if nsi is not None
@@ -813,9 +816,7 @@ def main(argv=None):
                 f"${dy:.{dd}f} \\pm {sy:.{dd}f}$ \\\\")
         table_offsets = "\n".join([
             r"\begin{table}",
-            r"\caption{Posterior registration offsets $\delta_{i}$ relative "
-            r"to the nominal galaxy positions (epoch-0 gauge), in STIS "
-            r"pixels: medians with posterior standard deviations.}",
+            r"\caption{Posterior registration offsets.}",
             r"\label{tab:offsets}",
             r"\centering",
             r"\begin{tabular}{lcc}",
@@ -823,6 +824,9 @@ def main(argv=None):
             r"Epoch & $\delta x$ [px] & $\delta y$ [px] \\",
             r"\hline", *rows, r"\hline",
             r"\end{tabular}",
+            r"\tablefoot{$\delta_{i}$ relative to the nominal galaxy positions "
+            r"(epoch-0 gauge), in STIS pixels: medians with posterior "
+            r"standard deviations.}",
             r"\end{table}", ""])
         (out_dir / "table_offsets.tex").write_text(table_offsets)
     else:
@@ -887,13 +891,7 @@ def main(argv=None):
             rows.append(" & ".join(cells) + r" \\")
         table_noise = "\n".join([
             r"\begin{table}",
-            r"\caption{Per-epoch noise scales: posterior median and "
-            r"16--84\,\% interval of $f_{i}$, its square, the mean squared "
-            r"standardized residual of epoch $i$ at the posterior median "
-            r"under the nominal noise model of \autoref{eq:perpixel_noise} "
-            r"(MSR$_{i}$) and under the fitted scales "
-            r"(MSR$_{i}/f_{i}^{2}$), and the number of weighted pixels "
-            r"$n_{i}$.}",
+            r"\caption{Per-epoch noise scales and goodness of fit.}",
             r"\label{tab:noise}",
             r"\centering",
             r"\begin{tabular}{lccccc}",
@@ -902,6 +900,11 @@ def main(argv=None):
             r"MSR$_{i}/f_{i}^{2}$ & $n_{i}$ \\",
             r"\hline", *rows, r"\hline",
             r"\end{tabular}",
+            r"\tablefoot{$f_{i}$: posterior median and 16--84\,\% interval; "
+            r"MSR$_{i}$: mean squared standardised residual of epoch $i$ at "
+            r"the posterior median under the nominal noise model of "
+            r"\autoref{eq:perpixel_noise}, and MSR$_{i}/f_{i}^{2}$ under the "
+            r"fitted scales; $n_{i}$: number of weighted pixels.}",
             r"\end{table}", ""])
         (out_dir / "table_noise.tex").write_text(table_noise)
     else:
@@ -932,7 +935,7 @@ def main(argv=None):
                 row["dlnZ_vs_run"])
         put(f"{suf}ESS", f"{row['ess']:.0f}", row["ess"])
         label = {"Base": r"run prior (flat $\tau'$, $\lambda$)",
-                 "LamTenth": r"$\lambda/10$\tablefootmark{a}",
+                 "LamTenth": r"$\lambda/10$",
                  "LamThird": r"$\lambda/3$", "LamThree": r"$3\lambda$",
                  "LamTen": r"$10\lambda$",
                  "SoftLog": r"soft-log $\tau'$ prior"}[suf]
@@ -943,9 +946,7 @@ def main(argv=None):
     if srow_tex:
         table_sens = "\n".join([
             r"\begin{table}",
-            r"\caption{Prior sensitivity of the optical-depth constraint, "
-            r"computed from the single nested-sampling run by importance "
-            r"reweighting (\autoref{sec:method_validation}).}",
+            r"\caption{Prior sensitivity of the optical-depth limit.}",
             r"\label{tab:sensitivity}",
             r"\centering",
             r"\begin{tabular}{lccc}",
@@ -953,11 +954,13 @@ def main(argv=None):
             r"Variant & $\tau'_{95}$ & $\Delta\ln\mathcal{Z}$ & ESS \\",
             r"\hline", *srow_tex, r"\hline",
             r"\end{tabular}",
-            r"\tablefoot{ESS is the raw Kish effective sample size of the "
-            r"importance weights (the overlap diagnostic); quantiles of the "
-            r"$\lambda$ rungs use the Rao--Blackwellized weights. "
-            r"\tablefoottext{a}{Indicative only: the raw ESS of this rung "
-            r"is too small for a precise quantile.}}",
+            r"\tablefoot{Computed from the single nested-sampling run by "
+            r"importance reweighting (\autoref{app:sensitivity}). ESS is the "
+            r"raw Kish effective sample size of the importance weights over "
+            r"the $16\,384$ points resampled (with replacement) from the "
+            r"weighted posterior, whose own effective sample size is "
+            r"\VgESS{}; the quantiles of the $\lambda$ rungs use "
+            r"Rao--Blackwellised weights.}",
             r"\end{table}", ""])
         (out_dir / "table_sensitivity.tex").write_text(table_sens)
 
@@ -982,12 +985,7 @@ def main(argv=None):
                 for s in sightlines]
         table_sl = "\n".join([
             r"\begin{table}",
-            r"\caption{Per-epoch sightlines: stellocentric radius of the "
-            r"galaxy, local normalized disk surface brightness $\hat{D}$ "
-            r"(mean within 2\,px), the $95\%$ upper limit on the sightline "
-            r"optical depth $\tau_{i} = \tau^{\prime}\hat{D}$, and the "
-            r"implied column-density limit for the grain assumptions of "
-            r"the text.}",
+            r"\caption{Per-epoch sightlines and optical-depth limits.}",
             r"\label{tab:sightlines}",
             r"\centering",
             r"\begin{tabular}{lcccc}",
@@ -996,6 +994,13 @@ def main(argv=None):
             r"$\Sigma_{95}$ [g\,cm$^{-2}$] \\",
             r"\hline", *rows, r"\hline",
             r"\end{tabular}",
+            r"\tablefoot{$r$: projected stellocentric radius of the galaxy; "
+            r"$\hat{D}$: local normalised disk surface brightness (mean "
+            r"within 2\,px); $\tau_{i,95}$: $95\%$ upper limit on the "
+            r"sightline optical depth $\tau_{i} = \tau^{\prime}\hat{D}$; "
+            r"$\Sigma_{95}$: implied column density for the grain "
+            r"assumptions of \autoref{eq:kappa_ext}, along the line of sight "
+            r"(multiply by $\cos i = 0.94$ for the vertical column).}",
             r"\end{table}", ""])
         (out_dir / "table_sightlines.tex").write_text(table_sl)
 

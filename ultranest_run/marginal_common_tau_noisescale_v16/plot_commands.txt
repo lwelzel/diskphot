@@ -2,7 +2,11 @@
 
 uv run /home/lwelzel/git/diskphot/src/v2/paper_values.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --out-dir /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/extra --module /home/lwelzel/git/diskphot/src/v2/self_sufficient_ultranest.py --evaluate
 
-# --albedo 0.1 is important (!) below!
-uv run /home/lwelzel/git/diskphot/src/v2/paper_figures.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --module /home/lwelzel/git/diskphot/src/v2/self_sufficient_ultranest.py --lit-dir /home/lwelzel/git/diskphot/literature_data --out-dir /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/plots --max-samples 2000 --albedo 0.1
+# --albedo 0.2 below: figure 5 draws the scattering columns for omega = 0.2 (central value of the joint estimate of Sect. 5.3); paper_figures.py no longer divides them by Q_ext, so the curves equal the earlier "--albedo 0.1" rendering and only the box label changes.
+uv run /home/lwelzel/git/diskphot/src/v2/paper_figures.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --module /home/lwelzel/git/diskphot/src/v2/self_sufficient_ultranest.py --lit-dir /home/lwelzel/git/diskphot/literature_data --out-dir /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/plots --max-samples 2000 --albedo 0.2
 
 uv run /home/lwelzel/git/diskphot/src/v2/paper_figures_schneider.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --module /home/lwelzel/git/diskphot/src/v2/self_sufficient_ultranest.py --out-dir /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/plots --arc-halfwidth 24 --profile-sigma 0.5 --alma /home/lwelzel/git/diskphot/literature_data/arks_alma/extracted --combine median
+
+# posterior subsample (4096 systematic draws) and the appendix / tau-marginal figures drawn from it
+uv run /home/lwelzel/git/diskphot/src/v2/subsample_posterior.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16 --n-samples 4096 --method systematic --out /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/paper/posterior_subsample.csv
+uv run /home/lwelzel/git/diskphot/src/v2/paper_figures_subsample.py /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16/extra/figures /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16

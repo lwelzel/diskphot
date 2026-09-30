@@ -870,38 +870,47 @@ def fig_residuals(module_path, log_dir, out_dir):
 # 4) eigenvalue spectrum of the template normal matrix
 # --------------------------------------------------------------------------- #
 def _plot_spectrum(eig, lam, out_dir, n_weighted=None):
-    rel = np.clip(np.asarray(eig, dtype=float) / eig[0], 1e-22, None)
+    """Eigenvalue spectrum of H at the nominal registration.  Only the
+    informative modes are drawn; the exact null space (eigenvalue 0) is
+    indicated by a downward arrow instead of a clipped flat line."""
+    eig = np.asarray(eig, dtype=float)
+    rel = eig / eig[0]
     lam_rel = lam / eig[0]
-    n_above = int((np.asarray(eig) > lam).sum())
-    print(f"modes above lambda: {n_above}"
+    n_above = int((eig > lam).sum())
+    p_tot = len(eig)
+    print(f"modes above lambda: {n_above} of {p_tot}"
           + (f"; weighted pixels / epoch: {n_weighted}" if n_weighted else "")
           + f"; single-aperture area pi(a+m)(b+m) = "
             f"{np.pi * 10.5 * 6.5:.0f} px")
 
     c_line, c_lam = palette(2, 0.25, 0.85)
     apply_style()
-    fig, ax = plt.subplots(figsize=(4.4, 3.3))
-    j = np.arange(1, len(rel) + 1)
-    ax.semilogy(j, rel, color=c_line, lw=1.4, drawstyle="steps-mid",
-                label=r"eigenvalues of $H$")
+    fig, ax = plt.subplots(figsize=(4.4, 3.0))
+    y_lo = lam_rel * 1e-2
+    j = np.arange(1, n_above + 1)
+    ax.semilogy(j, rel[:n_above], color=c_line, lw=1.5, drawstyle="steps-mid",
+                label=r"eigenvalues of $H$ ($\sigma_{j} > \lambda$)")
     ax.axhspan(lam_rel / 10, lam_rel * 10, color=c_lam, alpha=0.12)
     ax.axhspan(lam_rel / 3, lam_rel * 3, color=c_lam, alpha=0.18)
     ax.axhline(lam_rel, color=c_lam, lw=1.4, ls="--",
-               label=r"$\lambda$ (band: $\times/\div\,3,\,10$)")
+               label=r"$\lambda$ (bands: $\times/\div\,3$ and $10$)")
     ax.axvline(n_above + 0.5, color="0.4", lw=0.7, ls=":")
-    ax.annotate(rf"${n_above}$ modes above $\lambda$"
-                "\n(the union of weighted apertures)",
-                (n_above + 10, lam_rel * 3.5), fontsize=7.5)
-    ax.text(0.975, 0.05,
-            "template directions outside the union of\n"
-            "weighted apertures: exactly unconstrained\n"
-            "(numerically zero; clipped for display)",
-            transform=ax.transAxes, ha="right", va="bottom",
-            fontsize=7, color="0.35")
+    # exact null space: arrow from the end of the plateau to the axis floor
+    ax.annotate("", xy=(n_above + 0.5, y_lo * 2.0),
+                xytext=(n_above + 0.5, rel[n_above - 1] * 0.45),
+                arrowprops=dict(arrowstyle="-|>", color=c_line, lw=1.3,
+                                shrinkA=0, shrinkB=0))
+    ax.text(n_above / 2.0, np.sqrt(lam_rel * 30.0),
+            rf"${n_above}$ modes above $\lambda$" + "\n(aperture pixels)",
+            ha="center", va="center", fontsize=7.5, color="0.25")
+    ax.text(n_above + 14, y_lo * 1.0e4,
+            rf"$j > {n_above}$: exactly null" + "\n(template pixels outside\nthe aperture)",
+            ha="left", va="center", fontsize=7.5, color="0.25")
     ax.set_xlabel(r"mode index $j$")
     ax.set_ylabel(r"$\sigma_{j} / \sigma_{\max}$")
-    ax.set_xlim(1, len(rel))
-    ax.legend(loc="center left", fontsize=8)
+    ax.set_xlim(1, p_tot)
+    ax.set_ylim(y_lo, 4.0)
+    ax.legend(loc="upper right", fontsize=7.5, frameon=False)
     save(fig, out_dir, "template_spectrum")
 
 
@@ -1237,10 +1246,16 @@ def fig_comparison(log_dir, lit_dir, out_dir, albedo=0.5,
     comp = json.loads(comp_path.read_text())
     asm = comp["assumptions"]
 
-    # Ardila et al. (2004) measure the scattering product omega*tau; with an
-    # assumed albedo, tau = (omega tau) / omega, and the same mass-opacity
-    # closure as our own points (kappa_ext = 3 Q_ext / (4 rho a)) gives
-    # Sigma = (omega tau) 4 rho a / (3 Q_ext omega).  The extraction
+    # Ardila et al. (2004) measure the scattering product omega*tau, where
+    # tau is the GEOMETRIC optical depth of the paper's eq. (sb_relation)
+    # and omega the albedo relative to the geometric cross section.  With an
+    # assumed albedo, tau_geo = (omega tau) / omega, and the mass column is
+    # Sigma = tau_geo 4 rho a / 3 = (omega tau) 4 rho a / (3 omega): no
+    # Q_ext here -- Q_ext = 2 enters only the ATTENUATION columns, whose
+    # tau' is an extinction optical depth (Sigma = tau' / kappa_ext with
+    # kappa_ext = 3 Q_ext / (4 rho a)).  An earlier version divided the
+    # scattering columns by Q_ext as well, which put them a factor 2 too
+    # low for a given omega.  The extraction
     # (extract_f3.py) stores ABSOLUTE omega*tau, already corrected for the
     # erratum (Ardila et al. 2005: the 2004 values are 1600/4pi = 127.3
     # too small) -- NOT the printed axis value, whose unit is 1e-6, and
@@ -1251,7 +1266,7 @@ def fig_comparison(log_dir, lit_dir, out_dir, albedo=0.5,
     # distribution effective radius, as in the van Sluijs 2018 rendering).
     a_sc = scatter_a_cm if scatter_a_cm else asm["grain_a_cm"]
     conv = np.log10(1.0e4 * 4.0 * asm["grain_rho_gcc"] * a_sc
-                    / (3.0 * asm["q_ext"] * albedo))
+                    / (3.0 * albedo))
     dy_vs = np.log10(asm["grain_rho_gcc"] / VS_RHO_GCC)   # see VS_RHO_GCC
 
     c_v, c_i, c_han, c_dpl, c_spl, c_gap = palette(6, 0.18, 0.88)

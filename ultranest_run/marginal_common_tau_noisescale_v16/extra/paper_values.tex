@@ -60,9 +60,9 @@
 %   Template prior and model
 % ----------------------------------------------------------------------
 %   * \VgLam                      -- template prior precision lambda
-\newcommand{\VgLam}{\ensuremath{6.43\times 10^{0}}}
+\newcommand{\VgLam}{6.43}
 %   * \VgSigmaG                   -- per-pixel template prior std [cts/s]
-\newcommand{\VgSigmaG}{\ensuremath{3.9\times 10^{-1}}}
+\newcommand{\VgSigmaG}{0.39}
 %   * \VgLamRel                   -- empirical-Bayes scale of lambda
 \newcommand{\VgLamRel}{\ensuremath{1\times 10^{-5}}}
 %   * \VgTauHi                    -- flat tau' prior ceiling
@@ -116,7 +116,7 @@
 %   * \VgNIter                    -- nested-sampling iterations
 \newcommand{\VgNIter}{\ensuremath{4.1\times 10^{4}}}
 %   * \VgNLive                    -- live points
-\newcommand{\VgNLive}{512}
+\newcommand{\VgNLive}{521}
 
 % ----------------------------------------------------------------------
 %   Registration
@@ -168,9 +168,9 @@
 %   * \VgNModes                   -- template modes above the lambda floor
 \newcommand{\VgNModes}{215}
 %   * \VgHCond                    -- condition number of unridged H
-\newcommand{\VgHCond}{\ensuremath{2\times 10^{0}}}
+\newcommand{\VgHCond}{2.4}
 %   * \VgFmaxDlnL                 -- max |f32 - f64| lnL over the posterior
-\newcommand{\VgFmaxDlnL}{\ensuremath{1\times 10^{-3}}}
+\newcommand{\VgFmaxDlnL}{\ensuremath{1.2\times 10^{-3}}}
 %   * \VgNoiseScaleIdentity       -- verify(): |rescaled-weights instance - marginal at ln f| (implementation check)
 \newcommand{\VgNoiseScaleIdentity}{0}
 
@@ -223,14 +223,6 @@
 \newcommand{\VgLamTenDlnZ}{\ensuremath{+154.6}}
 %   * \VgLamTenESS                -- raw ESS, lam x 10
 \newcommand{\VgLamTenESS}{3222}
-%   * \VgSoftLogUL                -- 95% UL, soft-log
-\newcommand{\VgSoftLogUL}{\ensuremath{8.4\times 10^{-3}}}
-%   * \VgSoftLogULShift           -- shift of the 95% UL, soft-log
-\newcommand{\VgSoftLogULShift}{\ensuremath{-8.6\,\%}}
-%   * \VgSoftLogDlnZ              -- Delta lnZ vs run, soft-log
-\newcommand{\VgSoftLogDlnZ}{\ensuremath{+2.8}}
-%   * \VgSoftLogESS               -- raw ESS, soft-log
-\newcommand{\VgSoftLogESS}{15840}
 
 % ----------------------------------------------------------------------
 %   Per-epoch noise scales (median, 16--84)
