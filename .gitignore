@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# diskphot: local scientific data and generated products (not distributed
+# with the repository; see README.md)
+/data/
+*.fits
+outputs/
+literature_data/
+
+# UltraNest run products that are too large to version (the committed run
+# record keeps MODEL_CARD.txt, verify.json, sensitivity.json, extra/, paper/)
+ultranest_run/*/chains/
+ultranest_run/*/results/
+ultranest_run/*/plots/
+ultranest_run/*/info/
+ultranest_run/*/debug.log
+
+# OS / editor metadata
+.DS_Store
+.idea/
+.vscode/

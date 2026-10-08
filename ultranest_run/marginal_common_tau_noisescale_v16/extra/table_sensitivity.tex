@@ -1,0 +1,17 @@
+\begin{table}
+\caption{Prior sensitivity of the optical-depth limit.}
+\label{tab:sensitivity}
+\centering
+\begin{tabular}{lccc}
+\hline\hline
+Variant & $\tau'_{95}$ & $\Delta\ln\mathcal{Z}$ & ESS \\
+\hline
+run prior (flat $\tau'$, $\lambda$) & $9.17\times 10^{-3}$ & \dots & 16384 \\
+$\lambda/10$ & $9.94\times 10^{-3}$ & $-316.0$ & 4872 \\
+$\lambda/3$ & $9.48\times 10^{-3}$ & $-143.8$ & 9856 \\
+$3\lambda$ & $8.60\times 10^{-3}$ & $+116.3$ & 9655 \\
+$10\lambda$ & $6.78\times 10^{-3}$ & $+154.6$ & 3222 \\
+\hline
+\end{tabular}
+\tablefoot{Computed from the single nested-sampling run by importance reweighting (\autoref{app:sensitivity}). ESS is the raw Kish effective sample size of the importance weights over the $16\,384$ points resampled (with replacement) from the weighted posterior, whose own effective sample size is \VgESS{}; the quantiles of the $\lambda$ rungs use Rao--Blackwellised weights.}
+\end{table}

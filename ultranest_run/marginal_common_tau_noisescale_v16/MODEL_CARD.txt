@@ -1,0 +1,34 @@
+Fully Bayesian run: the integrand is the MARGINAL likelihood
+(galaxy template integrated out in closed form under a proper
+Gaussian prior), so the samples are a posterior and logz is a
+Bayesian evidence under the following priors:
+  * template g ~ N(0, lam^-1 I_P), P = 576,
+    lam = 6.42800309e+00  (sigma_g = 3.944228e-01 cts/s/px);
+    empirical-Bayes scale = lam_rel_init * max diag H at the
+    nominal registration, tau' = 0 and the NOMINAL weights
+    (f = 1), computed once and frozen;
+  * per-epoch offsets: uniform on +/- 1.5 px about
+    the nominal registration (epoch-0 gauge);
+  * per-epoch noise scales f_i, i = 0..7 (v07):
+    ln f_i uniform on [ln 0.25, ln 10], i.e. log-uniform
+    f in [0.25, 10]; the weights enter as w_i / f_i^2 and the
+    Gaussian normalization carries -n_i ln f_i, n_i = 215, 215, 215, 215, 215, 215, 215, 215;
+  * tau': flat on [0, 1.0] (the evidence scales with the
+    inverse of this ceiling).
+theta layout: offsets[0:14], lnf[14:22], tau[22]  (tau' last; N = 8 epochs,
+ndim = 23).
+lnL includes the theta-independent constants c_data
+(7.87707703e+03) and P/2 ln lam; evidence
+DIFFERENCES between variants on the same weights are unaffected
+by c_data, but comparisons across different lam require the
+P/2 ln lam term (included).
+Reported values are re-evaluated with reference_logl (float64).
+Robustness (sensitivity.json, computed from THIS run by
+importance reweighting -- no extra sampling): the template-
+prior ladder lam x {1/10, 1/3, 3, 10}, and the v05 soft-log
+tau' prior
+p(tau') = 1/[(tau' + 0.01) ln(1 + 100)];
+each row lists tau' quantiles, Kish ESS (validity certificate)
+and dlnZ.  An ESS collapse (< ~5% of the points) is the signal
+that a variant needs its own run; not expected here.
+Audit numbers (verify()) are in verify.json next to this file.

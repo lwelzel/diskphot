@@ -1,0 +1,245 @@
+% ----------------------------------------------------------------------
+%   Values computed by paper_values.py -- do not edit by hand.
+%   Source run: /home/lwelzel/git/diskphot/ultranest_run/marginal_common_tau_noisescale_v16
+% ----------------------------------------------------------------------
+
+% ----------------------------------------------------------------------
+%   Optical depth (tau' = optical depth at the disk surface-
+%   brightness peak of the transit region)
+% ----------------------------------------------------------------------
+%   * \VgTauMed                   -- posterior median with 16--84 interval
+\newcommand{\VgTauMed}{\ensuremath{\left(3.1^{+3.5}_{-2.2}\right)\times 10^{-3}}}
+%   * \VgTauMedVal                -- posterior median, plain
+\newcommand{\VgTauMedVal}{0.0031}
+%   * \VgTauPSixteen              -- 15.9th percentile
+\newcommand{\VgTauPSixteen}{\ensuremath{9.1\times 10^{-4}}}
+%   * \VgTauPEightyFour           -- 84.1st percentile
+\newcommand{\VgTauPEightyFour}{\ensuremath{6.6\times 10^{-3}}}
+%   * \VgTauULNinetyFive          -- 95% upper limit
+\newcommand{\VgTauULNinetyFive}{\ensuremath{9.2\times 10^{-3}}}
+%   * \VgTauULNinetyFiveVal       -- 95% upper limit, plain
+\newcommand{\VgTauULNinetyFiveVal}{0.0092}
+%   * \VgTauULThreeSig            -- 99.73% upper limit
+\newcommand{\VgTauULThreeSig}{\ensuremath{1.5\times 10^{-2}}}
+%   * \VgTauMean                  -- posterior mean
+\newcommand{\VgTauMean}{\ensuremath{3.7\times 10^{-3}}}
+%   * \VgTauStd                   -- posterior std
+\newcommand{\VgTauStd}{\ensuremath{2.9\times 10^{-3}}}
+%   * \VgTauMAP                   -- posterior mode (reflected KDE)
+\newcommand{\VgTauMAP}{\ensuremath{7.8\times 10^{-4}}}
+%   * \VgTauML                    -- maximum-likelihood value
+\newcommand{\VgTauML}{\ensuremath{5.2\times 10^{-3}}}
+%   * \VgTauDensZeroRel           -- posterior density at 0 / density at mode
+\newcommand{\VgTauDensZeroRel}{0.99}
+%   * \VgTauSavageDickey          -- ln Savage--Dickey ratio at tau'=0 (flat prior)
+\newcommand{\VgTauSavageDickey}{5.2}
+
+% ----------------------------------------------------------------------
+%   Detection statistics
+% ----------------------------------------------------------------------
+%   * \VgTauLLNinetyFive          -- one-sided 95% LOWER credible bound
+\newcommand{\VgTauLLNinetyFive}{\ensuremath{2.9\times 10^{-4}}}
+%   * \VgTauLLNinety              -- one-sided 90% LOWER credible bound
+\newcommand{\VgTauLLNinety}{\ensuremath{5.7\times 10^{-4}}}
+%   * \VgTauZeroExclCred          -- HPD credibility [%] at which tau'=0 is excluded
+\newcommand{\VgTauZeroExclCred}{6.60}
+%   * \VgTauZeroExclSigma         -- Gaussian sigma equivalent of the above
+\newcommand{\VgTauZeroExclSigma}{0.083}
+%   * \VgTauBEvenPriorWidth       -- prior width tau_hi giving even SD odds
+\newcommand{\VgTauBEvenPriorWidth}{0.0058}
+%   * \VgTauSoftMed               -- median under the soft-log tau prior (reweighted)
+\newcommand{\VgTauSoftMed}{\ensuremath{2.6\times 10^{-3}}}
+%   * \VgTauSoftLLNinetyFive      -- 95% lower bound, soft-log prior
+\newcommand{\VgTauSoftLLNinetyFive}{\ensuremath{2.1\times 10^{-4}}}
+%   * \VgTauSoftULNinetyFive      -- 95% upper bound, soft-log prior
+\newcommand{\VgTauSoftULNinetyFive}{\ensuremath{8.4\times 10^{-3}}}
+%   * \VgTauSoftZeroExclSigma     -- zero-exclusion sigma, soft-log prior
+\newcommand{\VgTauSoftZeroExclSigma}{0.0014}
+
+% ----------------------------------------------------------------------
+%   Template prior and model
+% ----------------------------------------------------------------------
+%   * \VgLam                      -- template prior precision lambda
+\newcommand{\VgLam}{6.43}
+%   * \VgSigmaG                   -- per-pixel template prior std [cts/s]
+\newcommand{\VgSigmaG}{0.39}
+%   * \VgLamRel                   -- empirical-Bayes scale of lambda
+\newcommand{\VgLamRel}{\ensuremath{1\times 10^{-5}}}
+%   * \VgTauHi                    -- flat tau' prior ceiling
+\newcommand{\VgTauHi}{1}
+%   * \VgOffsetBound              -- offset prior half-width [px] (from MODEL_CARD)
+\newcommand{\VgOffsetBound}{1.5}
+%   * \VgNoiseScaleLo             -- log-uniform noise-scale prior, lower bound
+\newcommand{\VgNoiseScaleLo}{0.25}
+%   * \VgNoiseScaleHi             -- log-uniform noise-scale prior, upper bound
+\newcommand{\VgNoiseScaleHi}{10}
+%   * \VgNDim                     -- sampled parameters
+\newcommand{\VgNDim}{23}
+%   * \VgNEpochs                  -- epochs
+\newcommand{\VgNEpochs}{8}
+%   * \VgNNoiseScales             -- per-epoch noise-scale parameters (0 = fixed weights)
+\newcommand{\VgNNoiseScales}{8}
+%   * \VgNTemplatePix             -- template pixels P
+\newcommand{\VgNTemplatePix}{576}
+
+% ----------------------------------------------------------------------
+%   Per-epoch noise scales f_i (posterior)
+% ----------------------------------------------------------------------
+%   * \VgNoiseScaleMin            -- smallest per-epoch median f_i
+\newcommand{\VgNoiseScaleMin}{1.2}
+%   * \VgNoiseScaleMax            -- largest per-epoch median f_i
+\newcommand{\VgNoiseScaleMax}{2.7}
+%   * \VgNoiseScaleMean           -- mean over epochs of the median f_i
+\newcommand{\VgNoiseScaleMean}{2.2}
+%   * \VgNoiseScaleGeoMean        -- geometric mean over epochs of the median f_i
+\newcommand{\VgNoiseScaleGeoMean}{2.1}
+%   * \VgNoiseScaleSigMax         -- largest 68% half-width of f_i
+\newcommand{\VgNoiseScaleSigMax}{0.14}
+%   * \VgNoiseScaleRelSigMax      -- largest posterior std of ln f_i [%]
+\newcommand{\VgNoiseScaleRelSigMax}{6.1}
+%   * \VgNoiseScaleLnSpread       -- max - min of the median ln f_i
+\newcommand{\VgNoiseScaleLnSpread}{0.79}
+
+% ----------------------------------------------------------------------
+%   Run statistics
+% ----------------------------------------------------------------------
+%   * \VgLogZ                     -- ln evidence (see text for caveats)
+\newcommand{\VgLogZ}{\ensuremath{4569.59 \pm 0.82}}
+%   * \VgLogZErr                  -- ln evidence uncertainty
+\newcommand{\VgLogZErr}{0.82}
+%   * \VgDlogz                    -- achieved evidence uncertainty (bootstrap)
+\newcommand{\VgDlogz}{0.82}
+%   * \VgESS                      -- posterior effective sample size
+\newcommand{\VgESS}{5897}
+%   * \VgNCalls                   -- likelihood evaluations
+\newcommand{\VgNCalls}{\ensuremath{6.1\times 10^{6}}}
+%   * \VgNIter                    -- nested-sampling iterations
+\newcommand{\VgNIter}{\ensuremath{4.1\times 10^{4}}}
+%   * \VgNLive                    -- live points
+\newcommand{\VgNLive}{521}
+
+% ----------------------------------------------------------------------
+%   Registration
+% ----------------------------------------------------------------------
+%   * \VgOffsetSigMin             -- smallest offset posterior std [px]
+\newcommand{\VgOffsetSigMin}{0.021}
+%   * \VgOffsetSigMax             -- largest offset posterior std [px]
+\newcommand{\VgOffsetSigMax}{0.037}
+%   * \VgOffsetAbsMax             -- largest |median| offset [px]
+\newcommand{\VgOffsetAbsMax}{0.71}
+
+% ----------------------------------------------------------------------
+%   Goodness of fit (nominal noise model unless 'Scaled')
+% ----------------------------------------------------------------------
+%   * \VgChiSqMed                 -- chi^2 at the posterior median, nominal weights
+\newcommand{\VgChiSqMed}{7055}
+%   * \VgChiSqScaledMed           -- chi^2 at the posterior median, fitted scales
+\newcommand{\VgChiSqScaledMed}{1412}
+%   * \VgNWeightedPix             -- weighted pixels
+\newcommand{\VgNWeightedPix}{1720}
+%   * \VgMSR                      -- mean squared standardized residual, nominal noise model
+\newcommand{\VgMSR}{4.10}
+%   * \VgMSRSqrt                  -- sqrt(MSR): single-scale equivalent of the nominal MSR
+\newcommand{\VgMSRSqrt}{2.0}
+%   * \VgMSRScaled                -- mean squared standardized residual, fitted scales
+\newcommand{\VgMSRScaled}{0.821}
+%   * \VgMSRTercileLow            -- nominal MSR, lowest model-flux tercile
+\newcommand{\VgMSRTercileLow}{3.7}
+%   * \VgMSRTercileMid            -- nominal MSR, middle model-flux tercile
+\newcommand{\VgMSRTercileMid}{3.7}
+%   * \VgMSRTercileHigh           -- nominal MSR, highest model-flux tercile
+\newcommand{\VgMSRTercileHigh}{4.9}
+%   * \VgMSRTercileLowScaled      -- scaled MSR, lowest model-flux tercile
+\newcommand{\VgMSRTercileLowScaled}{0.76}
+%   * \VgMSRTercileMidScaled      -- scaled MSR, middle model-flux tercile
+\newcommand{\VgMSRTercileMidScaled}{0.74}
+%   * \VgMSRTercileHighScaled     -- scaled MSR, highest model-flux tercile
+\newcommand{\VgMSRTercileHighScaled}{0.96}
+
+% ----------------------------------------------------------------------
+%   Audit-derived (verify)
+% ----------------------------------------------------------------------
+%   * \VgVolumeSlope              -- d ln det(H+lam I)/d tau' on the data
+\newcommand{\VgVolumeSlope}{-364}
+%   * \VgVolumeTilt               -- volume-term tilt of lnL per unit tau'
+\newcommand{\VgVolumeTilt}{182}
+%   * \VgVolumeSlopeLnF           -- d ln det(H+lam I)/d ln f_0 on the data
+\newcommand{\VgVolumeSlopeLnF}{-66.6}
+%   * \VgNModes                   -- template modes above the lambda floor
+\newcommand{\VgNModes}{215}
+%   * \VgHCond                    -- condition number of unridged H
+\newcommand{\VgHCond}{2.4}
+%   * \VgFmaxDlnL                 -- max |f32 - f64| lnL over the posterior
+\newcommand{\VgFmaxDlnL}{\ensuremath{1.2\times 10^{-3}}}
+%   * \VgNoiseScaleIdentity       -- verify(): |rescaled-weights instance - marginal at ln f| (implementation check)
+\newcommand{\VgNoiseScaleIdentity}{0}
+
+% ----------------------------------------------------------------------
+%   Column-density conversion
+% ----------------------------------------------------------------------
+%   * \VgKappaExt                 -- extinction opacity kappa_ext [cm^2 g^-1]
+\newcommand{\VgKappaExt}{\ensuremath{2.70\times 10^{3}}}
+%   * \VgSigmaULPeak              -- 95% Sigma limit at the SB peak [g cm^-2]
+\newcommand{\VgSigmaULPeak}{\ensuremath{3.4\times 10^{-6}}}
+%   * \VgLogSigmaULPeak           -- log10(Sigma_95 x 1e4 g cm^-2) at the peak
+\newcommand{\VgLogSigmaULPeak}{-1.47}
+
+% ----------------------------------------------------------------------
+%   Prior sensitivity (single-run reweighting)
+% ----------------------------------------------------------------------
+%   * \VgBaseUL                   -- 95% UL, run prior
+\newcommand{\VgBaseUL}{\ensuremath{9.2\times 10^{-3}}}
+%   * \VgBaseESS                  -- raw ESS, run prior
+\newcommand{\VgBaseESS}{16384}
+%   * \VgLamTenthUL               -- 95% UL, lam x 0.1
+\newcommand{\VgLamTenthUL}{\ensuremath{9.9\times 10^{-3}}}
+%   * \VgLamTenthULShift          -- shift of the 95% UL, lam x 0.1
+\newcommand{\VgLamTenthULShift}{\ensuremath{+8.4\,\%}}
+%   * \VgLamTenthDlnZ             -- Delta lnZ vs run, lam x 0.1
+\newcommand{\VgLamTenthDlnZ}{\ensuremath{-316.0}}
+%   * \VgLamTenthESS              -- raw ESS, lam x 0.1
+\newcommand{\VgLamTenthESS}{4872}
+%   * \VgLamThirdUL               -- 95% UL, lam x 0.333
+\newcommand{\VgLamThirdUL}{\ensuremath{9.5\times 10^{-3}}}
+%   * \VgLamThirdULShift          -- shift of the 95% UL, lam x 0.333
+\newcommand{\VgLamThirdULShift}{\ensuremath{+3.4\,\%}}
+%   * \VgLamThirdDlnZ             -- Delta lnZ vs run, lam x 0.333
+\newcommand{\VgLamThirdDlnZ}{\ensuremath{-143.8}}
+%   * \VgLamThirdESS              -- raw ESS, lam x 0.333
+\newcommand{\VgLamThirdESS}{9856}
+%   * \VgLamThreeUL               -- 95% UL, lam x 3
+\newcommand{\VgLamThreeUL}{\ensuremath{8.6\times 10^{-3}}}
+%   * \VgLamThreeULShift          -- shift of the 95% UL, lam x 3
+\newcommand{\VgLamThreeULShift}{\ensuremath{-6.2\,\%}}
+%   * \VgLamThreeDlnZ             -- Delta lnZ vs run, lam x 3
+\newcommand{\VgLamThreeDlnZ}{\ensuremath{+116.3}}
+%   * \VgLamThreeESS              -- raw ESS, lam x 3
+\newcommand{\VgLamThreeESS}{9655}
+%   * \VgLamTenUL                 -- 95% UL, lam x 10
+\newcommand{\VgLamTenUL}{\ensuremath{6.8\times 10^{-3}}}
+%   * \VgLamTenULShift            -- shift of the 95% UL, lam x 10
+\newcommand{\VgLamTenULShift}{\ensuremath{-26.0\,\%}}
+%   * \VgLamTenDlnZ               -- Delta lnZ vs run, lam x 10
+\newcommand{\VgLamTenDlnZ}{\ensuremath{+154.6}}
+%   * \VgLamTenESS                -- raw ESS, lam x 10
+\newcommand{\VgLamTenESS}{3222}
+
+% ----------------------------------------------------------------------
+%   Per-epoch noise scales (median, 16--84)
+% ----------------------------------------------------------------------
+%   * \VgNoiseScaleEPA            -- f_0 of epoch 0
+\newcommand{\VgNoiseScaleEPA}{\ensuremath{1.546^{+0.092}_{-0.085}}}
+%   * \VgNoiseScaleEPB            -- f_1 of epoch 1
+\newcommand{\VgNoiseScaleEPB}{\ensuremath{1.237^{+0.078}_{-0.074}}}
+%   * \VgNoiseScaleEPC            -- f_2 of epoch 2
+\newcommand{\VgNoiseScaleEPC}{\ensuremath{2.38^{+0.13}_{-0.12}}}
+%   * \VgNoiseScaleEPD            -- f_3 of epoch 3
+\newcommand{\VgNoiseScaleEPD}{\ensuremath{2.51^{+0.13}_{-0.12}}}
+%   * \VgNoiseScaleEPE            -- f_4 of epoch 4
+\newcommand{\VgNoiseScaleEPE}{\ensuremath{2.56^{+0.15}_{-0.14}}}
+%   * \VgNoiseScaleEPF            -- f_5 of epoch 5
+\newcommand{\VgNoiseScaleEPF}{\ensuremath{2.72^{+0.14}_{-0.13}}}
+%   * \VgNoiseScaleEPG            -- f_6 of epoch 6
+\newcommand{\VgNoiseScaleEPG}{\ensuremath{1.95^{+0.11}_{-0.11}}}
+%   * \VgNoiseScaleEPH            -- f_7 of epoch 7
+\newcommand{\VgNoiseScaleEPH}{\ensuremath{2.37^{+0.15}_{-0.13}}}

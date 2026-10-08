@@ -1,0 +1,24 @@
+# Commands used to produce the values, tables and figures of the paper from
+# this run directory, from the repository root (RUN = this directory).
+# Originally run as `uv run src/v2/<script>.py ... --module
+# src/v2/self_sufficient_ultranest.py`; rewritten here for the packaged
+# layout (python -m diskphot.<module>), with the same arguments.
+RUN=ultranest_run/marginal_common_tau_noisescale_v16
+
+# values, tables, comparison_values.json -> extra/ (needs the data: --evaluate)
+python -m diskphot.paper_values $RUN --out-dir $RUN/extra --evaluate
+
+# figures 1-6 -> plots/.  --albedo 0.2: figure 5 draws the scattering columns
+# for omega = 0.2 (central value of the joint estimate of Sect. 5.3); the
+# scattering columns are not divided by Q_ext, so the curves equal the
+# earlier "--albedo 0.1" rendering and only the box label changes.
+python -m diskphot.paper_figures $RUN --lit-dir literature_data --out-dir $RUN/plots --max-samples 2000 --albedo 0.2
+
+# epoch gallery (GS02), disk model + cross-section (GS03/GS04), galaxy-free
+# stack with the ARKS ALMA contours (diskalma) -> plots/
+python -m diskphot.paper_figures_schneider $RUN --out-dir $RUN/plots --arc-halfwidth 24 --profile-sigma 0.5 --alma literature_data/arks_alma/extracted --combine median
+
+# posterior subsample (4096 systematic draws) -> paper/, and the appendix
+# corner plots + tau' marginal drawn from it -> extra/figures/
+python -m diskphot.subsample_posterior $RUN --n-samples 4096 --method systematic --out $RUN/paper/posterior_subsample
+python -m diskphot.paper_figures_subsample $RUN/extra/figures $RUN
