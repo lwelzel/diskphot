@@ -5,7 +5,7 @@ All figures share one color scheme (``cmasher`` *bubblegum*; the diverging
 residual maps use the visually matching *waterlily*).  Existing libraries do
 the heavy lifting: UltraNest/corner for the posterior, astropy for the
 parallax + proper-motion track, and the analysis module itself
-(``self_sufficient_ultranest.py``) for everything that touches data.
+(``diskphot.likelihood``) for everything that touches data.
 
 Figures
 -------
@@ -36,37 +36,32 @@ runs (offsets, tau').  Every index into theta goes through
 
 Usage
 -----
-    python paper_figures.py <log_dir> --figs 1 5 6 --lit-dir literature_data
-    python paper_figures.py <log_dir> --figs 2 3 4 --module path/to/self_sufficient_ultranest.py
+    python -m diskphot.paper_figures <log_dir> --figs 1 5 6 --lit-dir literature_data
+    python -m diskphot.paper_figures <log_dir> --figs 2 3 4
 
 Figures 1 and 6 need only the run directory; figure 5 needs the literature
 CSV directory and ``<log_dir>/paper/comparison_values.json`` (written by
-``paper_values.py``, with ``--evaluate`` for the per-epoch points); figures
-2-4 need ``--module`` and the data paths inside it to resolve.
+``diskphot.paper_values``, with ``--evaluate`` for the per-epoch points);
+figures 2-4 need the data (``DISKPHOT_DATA``, see README.md).
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import sys
 import warnings
 from pathlib import Path
 
-import numpy as np
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
+import cmasher as cmr  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.patches import Ellipse  # noqa: E402
-import cmasher as cmr  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-try:
-    from paper_values import param_layout, offsets_from_theta  # noqa: E402
-except ImportError as exc:                                     # pragma: no cover
-    sys.exit(f"paper_values.py must sit next to this script ({exc})")
+from diskphot.paper_values import offsets_from_theta, param_layout  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # shared style
@@ -177,11 +172,12 @@ def to_np(x):
             else np.asarray(x))
 
 
-def import_module(path):
-    spec = importlib.util.spec_from_file_location("ssu", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+def analysis_module():
+    """The likelihood + data module, imported lazily (it pulls in torch and
+    selects the compute device at import; figures 1, 5 and 6 never need
+    it)."""
+    from diskphot import likelihood
+    return likelihood
 
 
 # --------------------------------------------------------------------------- #
@@ -290,8 +286,8 @@ def fig_posterior(log_dir, out_dir, params=None,
 # 2) disk model + epoch positions + on-sky galaxy track
 # --------------------------------------------------------------------------- #
 def _parallax_factors(times, ra_deg, dec_deg):
-    from astropy.coordinates import get_body_barycentric
     import astropy.units as u
+    from astropy.coordinates import get_body_barycentric
 
     ra, dec = np.deg2rad(ra_deg), np.deg2rad(dec_deg)
     pos = get_body_barycentric("earth", times)
@@ -421,10 +417,12 @@ def _plot_disk_track(disk, q_full, out_dir, t_span=(2004.0, 2028.0),
     print(f"track sign convention (sx, sy) = ({sx}, {sy}); "
           f"mean |predicted - measured| = {rms / scale / 1000.0:.2f} px")
 
-    to_xy = lambda dra, ddec: np.stack(
-        [(q_full[0, 0] - star[0]) * scale + sx * np.atleast_1d(dra) / 1000.0,
-         (q_full[0, 1] - star[1]) * scale + sy * np.atleast_1d(ddec) / 1000.0],
-        axis=-1)
+    def to_xy(dra, ddec):
+        return np.stack(
+            [(q_full[0, 0] - star[0]) * scale + sx * np.atleast_1d(dra) / 1000.0,
+             (q_full[0, 1] - star[1]) * scale + sy * np.atleast_1d(ddec) / 1000.0],
+            axis=-1)
+
     tt = Time(np.arange(t_span[0], t_span[1] + 1e-9, 1.0 / 36.0),
               format="jyear")
     track = to_xy(*galaxy_track_mas(tt, EPOCH_DATES[0]))
@@ -575,8 +573,10 @@ def _plot_disk_track(disk, q_full, out_dir, t_span=(2004.0, 2028.0),
     xlo, xhi = ax.get_xlim()
     ylo, yhi = ax.get_ylim()
     excl = [(xhi - 1.55, xhi, yhi - 1.95, yhi)]    # compass corner
-    inside_excl = lambda pt: any(a <= pt[0] <= b and c <= pt[1] <= d
-                                 for a, b, c, d in excl)
+
+    def inside_excl(pt):
+        return any(a <= pt[0] <= b and c <= pt[1] <= d for a, b, c, d in excl)
+
     # deterministic: pool the in-view vertices of ALL segments of a level
     # and take the argmax of (x + y) outside the exclusions -- the label
     # lands on the top-right-most point, and for a level broken into
@@ -634,10 +634,10 @@ def _plot_disk_track(disk, q_full, out_dir, t_span=(2004.0, 2028.0),
     save(fig, out_dir, "disk_galaxy_track")
 
 
-def fig_disk_track(module_path, log_dir, out_dir):
+def fig_disk_track(log_dir, out_dir):
     import torch
 
-    ssu = import_module(module_path)
+    ssu = analysis_module()
     disk = to_np(ssu.load_disk_model())
     pos = ssu.load_position_guess()
     q_full = np.stack([pos["x_est"].to_numpy(),
@@ -828,10 +828,10 @@ def _plot_residuals(obs, model, chi, g, q_cut, offsets, out_dir,
     save(fig, out_dir, "residuals_grid")
 
 
-def fig_residuals(module_path, log_dir, out_dir):
+def fig_residuals(log_dir, out_dir):
     import torch
 
-    ssu = import_module(module_path)
+    ssu = analysis_module()
     obs, disks, masks, var, nominal, q_cut = ssu.load_native_data()
     info = load_info(log_dir)
     lay = run_layout(info)
@@ -914,10 +914,10 @@ def _plot_spectrum(eig, lam, out_dir, n_weighted=None):
     save(fig, out_dir, "template_spectrum")
 
 
-def fig_spectrum(module_path, out_dir):
+def fig_spectrum(out_dir):
     import torch
 
-    ssu = import_module(module_path)
+    ssu = analysis_module()
     obs, disks, masks, var, nominal, _ = ssu.load_native_data()
     ll = ssu.LogLikelihood(obs, disks, masks, var, nominal)
     with torch.no_grad():
@@ -1149,7 +1149,8 @@ def _sigma_curve(ax, path, color, scale, band_alpha=0.25, lw=1.1,
     segs, cur = [], [idx[0]]
     for k0, k1 in zip(idx[:-1], idx[1:]):
         if in_gap[k0 + 1:k1].any():
-            segs.append(cur); cur = [k1]
+            segs.append(cur)
+            cur = [k1]
         else:
             cur.append(k1)
     segs.append(cur)
@@ -1235,10 +1236,9 @@ def fig_comparison(log_dir, lit_dir, out_dir, albedo=0.5,
         sys.exit(
             "figure 5 needs comparison_values.json (searched: "
             + ", ".join(str(c) for c in candidates) + ").\n"
-            "Produce it with paper_values.py, then re-run this figure:\n"
-            f"  python paper_values.py {log_dir} --evaluate "
-            "--module <self_sufficient_ultranest.py>\n"
-            f"  python paper_figures.py {log_dir} --figs 5 "
+            "Produce it with diskphot.paper_values, then re-run this figure:\n"
+            f"  python -m diskphot.paper_values {log_dir} --evaluate\n"
+            f"  python -m diskphot.paper_figures {log_dir} --figs 5 "
             f"--lit-dir {lit_dir}\n"
             "(--evaluate needs the data; without it the json is still "
             "written but holds only the peak limit, no per-epoch points)")
@@ -1279,7 +1279,7 @@ def fig_comparison(log_dir, lit_dir, out_dir, albedo=0.5,
         sl = [s for s in sl if s["dhat"] >= 0.01]   # drop off-disk epochs
     if not sl:
         warnings.warn("no per-epoch sightlines in comparison_values.json "
-                      "(run paper_values.py --evaluate); plotting the peak "
+                      "(run diskphot.paper_values --evaluate); plotting the peak "
                       "limit only")
         r = np.array([comp["peak"].get("r_au", 100.0)])
         yy = np.array([comp["peak"]["log_sigma_ul95"]])
@@ -1443,7 +1443,7 @@ def _wquantiles(x, w, qs):
 def fig_noise_scales(log_dir, out_dir, max_samples=None):
     """Posterior of the per-epoch noise scales f_i: median, 68 % (thick)
     and 95 % (thin) intervals per epoch, the nominal noise model f = 1,
-    and -- when ``paper_values.py --evaluate`` has been run -- the square
+    and -- when ``diskphot.paper_values --evaluate`` has been run -- the square
     root of the nominal per-epoch MSR at the posterior median (the value
     a single-scale correction of the fixed noise model would imply; it
     exceeds f_i by the template degrees of freedom absorbed per epoch)."""
@@ -1514,8 +1514,6 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("log_dir")
     ap.add_argument("--figs", nargs="+", default=["1", "2", "3", "4", "5", "6"])
-    ap.add_argument("--module", default=None,
-                    help="path to self_sufficient_ultranest.py (figs 2-4)")
     ap.add_argument("--lit-dir", default=None,
                     help="literature_data root with fig3/, ricci16/, "
                          "arks_radial_profile/ and fig13/ extractions "
@@ -1546,11 +1544,9 @@ def main(argv=None):
             fig_posterior(args.log_dir, out, params=args.params,
                           max_samples=args.max_samples)
         elif f in ("2", "3", "4"):
-            if not args.module:
-                sys.exit(f"figure {f} needs --module")
-            {"2": lambda: fig_disk_track(args.module, args.log_dir, out),
-             "3": lambda: fig_residuals(args.module, args.log_dir, out),
-             "4": lambda: fig_spectrum(args.module, out)}[f]()
+            {"2": lambda: fig_disk_track(args.log_dir, out),
+             "3": lambda: fig_residuals(args.log_dir, out),
+             "4": lambda: fig_spectrum(out)}[f]()
         elif f == "5":
             if not args.lit_dir:
                 sys.exit("figure 5 needs --lit-dir")

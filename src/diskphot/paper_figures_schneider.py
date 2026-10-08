@@ -49,16 +49,16 @@ diskalma
         0.82" beam); see --alma.
 
 The heavy lifting is reused: data access goes through the analysis module
-(``self_sufficient_ultranest.py`` -- pass with ``--module``), style/track/
-centering helpers come from ``paper_figures.py`` (same directory), and the
-cross-section is sampled with ``scipy.ndimage.map_coordinates``.
+(``diskphot.likelihood``; needs the data, see ``DISKPHOT_DATA`` in
+README.md), style/track/centering helpers come from
+``diskphot.paper_figures``, and the cross-section is sampled with
+``scipy.ndimage.map_coordinates``.
 
 Usage
 -----
-    python paper_figures_schneider.py --module self_sufficient_ultranest.py
-    python paper_figures_schneider.py <log_dir> --figs gs0304 \
-        --module path/to/self_sufficient_ultranest.py
-    python paper_figures_schneider.py --figs diskalma \
+    python -m diskphot.paper_figures_schneider
+    python -m diskphot.paper_figures_schneider <log_dir> --figs gs0304
+    python -m diskphot.paper_figures_schneider --figs diskalma \
         --alma literature_data/arks_alma/extracted
 
 Passing any diskalma-specific option (``--alma``, ``--combine``,
@@ -79,21 +79,17 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt                     # noqa: E402
-import matplotlib.patheffects as pe                 # noqa: E402
-from matplotlib import colors as mcolors            # noqa: E402
-from matplotlib.colors import LogNorm               # noqa: E402
-from matplotlib.patches import Ellipse              # noqa: E402
+import matplotlib.patheffects as pe  # noqa: E402
+import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib import colors as mcolors  # noqa: E402
+from matplotlib.colors import LogNorm  # noqa: E402
+from matplotlib.patches import Ellipse  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-try:
-    import paper_figures as pf                      # noqa: E402  shared style
-except ImportError as exc:                          # pragma: no cover
-    sys.exit(f"paper_figures.py must sit next to this script ({exc})")
+from diskphot import paper_figures as pf  # noqa: E402  shared style
 
 # --------------------------------------------------------------------------- #
 # shared constants (GS02 caption / proposal bookkeeping)
@@ -122,7 +118,8 @@ GAL_ASPECT_STACK = 2.5          # stretch of the mask ellipse's (margined)
                                 # perpendicular, so the refill still works)
 ALMA_FILES = ("hd107146_contours.json", "hd107146_contours.npz")
 ALMA_SUBDIR = Path("literature_data") / "arks_alma" / "extracted"
-ALMA_LABEL = "ALMA 1.0\u2009mm (B6+B7)"  # ARKS band 6+7 multi-frequency image, 300 GHz reference (Marino et al. 2026)
+# ARKS band 6+7 multi-frequency image, 300 GHz reference (Marino et al. 2026)
+ALMA_LABEL = "ALMA 1.0\u2009mm (B6+B7)"
 ALMA_LEVELS_DEFAULT = (5, 18, 24)  # sigma levels drawn by default (the file
                                 # also carries 30; --alma-levels overrides)
 ALMA_BEAM_FWHM_ARCSEC = 0.819   # circular; vector beam circle of the gallery
@@ -431,8 +428,8 @@ def galaxy_track_arcsec(q_full, star, sx, sy, t_span=(2004.0, 2028.0)):
 # --------------------------------------------------------------------------- #
 # GS02: transit epochs E0-E7, 2 x 4
 # --------------------------------------------------------------------------- #
-def fig_gs02(module_path, out_dir, log_dir=None):
-    ssu = pf.import_module(module_path)
+def fig_gs02(out_dir, log_dir=None):
+    ssu = pf.analysis_module()
     frames = load_frames(ssu)
     disk = pf.to_np(ssu.load_disk_model()).astype(float)
     star = np.array(pf.find_star_center(disk))
@@ -735,11 +732,11 @@ def _diagnose_model_agreement(out_dir, disk, star, u_maj, radii, half_arc,
     pf.save(fig, out_dir, "GS03_diagnostics")
 
 
-def fig_gs0304(module_path, out_dir, log_dir=None, rep_epoch=2,
+def fig_gs0304(out_dir, log_dir=None, rep_epoch=2,
                pa_major=None, t_span=(2004.0, 2028.0),
                prof_sigma=PROFILE_SIGMA_PX, half_arc=ARC_HALF_PX,
                diagnose=False):
-    ssu = pf.import_module(module_path)
+    ssu = pf.analysis_module()
     frames = load_frames(ssu)
     disk = pf.to_np(ssu.load_disk_model()).astype(float)
     star = np.array(pf.find_star_center(disk))
@@ -807,8 +804,8 @@ def fig_gs0304(module_path, out_dir, log_dir=None, rep_epoch=2,
           f"({r_in * scale:.2f}\"), HWHM-out {r_out:.1f} px "
           f"({r_out * scale:.2f}\"), FWHM {r_out - r_in:.1f} px "
           f"({(r_out - r_in) * scale:.2f}\")")
-    lab01 = f"AQ image"
-    lab_l8 = f"median image"
+    lab01 = "AQ image"
+    lab_l8 = "median image"
     for name, p, extra in ((lab01, prof_aq,
                             "5-px-cross median resample of both epochs; "),
                            (lab_l8, prof_l8, "")):
@@ -901,11 +898,6 @@ def fig_gs0304(module_path, out_dir, log_dir=None, rep_epoch=2,
     show = radii >= 43.0
     gmax = np.nanmax([pk, np.nanmax(prof_aq[show]),
                       np.nanmax(prof_l8[show])])
-    r_leg = radii[show][0] + 0.40 * (radii[-1] - radii[show][0])
-    leg = radii >= r_leg                    # x-span under the legend box
-    m_leg = np.nanmax([np.nanmax(np.where(leg, prof_aq, np.nan)),
-                       np.nanmax(np.where(leg, prof_l8, np.nan)),
-                       np.nanmax(np.where(leg, prof_md, np.nan))])
     y_top = 1.05 * gmax  # legend clears every curve
     ax_d.axvspan(radii[show][0], R_AGREE_PX, color="0.55", alpha=0.14,
                  lw=0, zorder=1)
@@ -962,13 +954,11 @@ def fig_gs0304(module_path, out_dir, log_dir=None, rep_epoch=2,
 def _resolve_alma(alma):
     """Path of the contour extraction: ``--alma`` may be the file, its
     directory, or omitted (then ``literature_data/arks_alma/extracted``
-    is searched next to the script, one level up, and under the CWD);
-    ``none`` switches the overlay off."""
+    under the working directory is tried); ``none`` switches the overlay
+    off."""
     if alma is not None and str(alma).strip().lower() in ("none", "off"):
         return None
-    here = Path(__file__).resolve().parent
-    cands = ([Path(alma)] if alma else []) \
-        + [base / ALMA_SUBDIR for base in (here, here.parent, Path.cwd())]
+    cands = ([Path(alma)] if alma else []) + [Path.cwd() / ALMA_SUBDIR]
     cands = list(dict.fromkeys(c.resolve() for c in cands))
     tried = []
     for c in cands:
@@ -998,8 +988,8 @@ def load_alma_contours(path):
         z = np.load(path)
         seg, lev = z["segments_arcsec"], z["level_sigma"]
         out = []
-        for l in np.unique(lev):         # chain the consecutive 2-pt
-            s = seg[lev == l]            # segments back into polylines
+        for lvl in np.unique(lev):       # chain the consecutive 2-pt
+            s = seg[lev == lvl]          # segments back into polylines
             polys, cur = [], [s[0][0], s[0][1]]
             for a, b in s[1:]:
                 if np.allclose(a, cur[-1], atol=1e-9):
@@ -1008,7 +998,7 @@ def load_alma_contours(path):
                     polys.append(np.asarray(cur))
                     cur = [a, b]
             polys.append(np.asarray(cur))
-            out.append((int(l), polys))
+            out.append((int(lvl), polys))
     return sorted(out, key=lambda t: t[0])
 
 
@@ -1048,7 +1038,7 @@ def _beam_and_levels(ax, levels_drawn, beam=ALMA_BEAM_FWHM_ARCSEC):
                              lw=0.6, hatch="//////", zorder=6))
         y_txt = y0 + beam / 2.0
         x0 += beam + 0.030 * span
-    lv = ",\u2009".join(f"{l:g}" for l in levels_drawn)
+    lv = ",\u2009".join(f"{lvl:g}" for lvl in levels_drawn)
     ax.text(x0, y_txt, ALMA_LABEL + "\n" + rf"$[{lv}]\,\sigma$",
             color="white", fontsize=6.0, ha="left", va="center",
             linespacing=1.25, zorder=6, path_effects=STROKE)
@@ -1090,7 +1080,7 @@ def _stack_stats(frames, imgs, comb, nmap, star, q_full, margin, aspect,
           f"{np.nanstd(np.where(bg, comb, np.nan)):.1e} counts/s/px")
 
 
-def fig_disk_alma(module_path, out_dir, log_dir=None, alma=None,
+def fig_disk_alma(out_dir, log_dir=None, alma=None,
                   combine="median", gal_margin=GAL_MARGIN_STACK,
                   gal_aspect=GAL_ASPECT_STACK, levels=None):
     """One galaxy-free disk image from all epochs, ALMA contours on top.
@@ -1111,10 +1101,10 @@ def fig_disk_alma(module_path, out_dir, log_dir=None, alma=None,
     if alma_path is not None:
         layers = load_alma_contours(alma_path)
         print(f"ALMA contours: {alma_path} ("
-              + ", ".join(str(l) for l, _ in layers) + " sigma; "
+              + ", ".join(str(lvl) for lvl, _ in layers) + " sigma; "
               + str(sum(len(p) for _, p in layers)) + " polylines)")
 
-    ssu = pf.import_module(module_path)
+    ssu = pf.analysis_module()
     frames = load_frames(ssu)
     disk = pf.to_np(ssu.load_disk_model()).astype(float)
     star = np.array(pf.find_star_center(disk))
@@ -1176,7 +1166,7 @@ def fig_disk_alma(module_path, out_dir, log_dir=None, alma=None,
             color="white", zorder=7, path_effects=STROKE)
     if drawn:
         _beam_and_levels(ax, drawn)
-        print(f"overlay: levels [" + ", ".join(map(str, drawn))
+        print("overlay: levels [" + ", ".join(map(str, drawn))
               + f"] sigma; beam {ALMA_BEAM_FWHM_ARCSEC:.2f}\" FWHM "
               f"(circular, hatched); (dRA, dDec) -> (sx, sy) = "
               f"({sx:+d}, {sy:+d}) pixel mapping")
@@ -1209,18 +1199,15 @@ def main(argv=None):
     ap.add_argument("log_dir", nargs="?", default=None,
                     help="optional run directory; the posterior-median "
                          "offsets then refine the epoch positions")
-    ap.add_argument("--module", default="self_sufficient_ultranest.py",
-                    help="path to self_sufficient_ultranest.py (data access)")
     ap.add_argument("--figs", nargs="+", default=["gs02", "gs0304"],
                     choices=["gs02", "gs0304", "diskalma"])
     ap.add_argument("--out-dir", default=None)
     ap.add_argument("--alma", default=None, metavar="FILE|DIR",
                     help="diskalma: ARKS contour extraction "
                          "(hd107146_contours.json/.npz or its directory; "
-                         "default: search literature_data/arks_alma/"
-                         "extracted next to the script, one level up, "
-                         "and under the CWD); 'none' disables the "
-                         "overlay")
+                         "default: literature_data/arks_alma/extracted "
+                         "under the working directory); 'none' disables "
+                         "the overlay")
     ap.add_argument("--combine", choices=("median", "mean"), default=None,
                     help="diskalma: all-epoch combination (default "
                          "median, which rejects the galaxy halo wings, "
@@ -1278,28 +1265,21 @@ def main(argv=None):
     gal_aspect = (args.gal_aspect if args.gal_aspect is not None
                   else GAL_ASPECT_STACK)
 
-    module = Path(args.module)
-    if not module.exists():
-        alt = Path(__file__).resolve().parent / module.name
-        if alt.exists():
-            module = alt
-        else:
-            sys.exit(f"--module {args.module} not found")
     out = (Path(args.out_dir) if args.out_dir
            else (Path(args.log_dir) / "paper" / "figures" if args.log_dir
                  else Path("figures")))
 
     for f in args.figs:
         if f == "gs02":
-            fig_gs02(str(module), out, log_dir=args.log_dir)
+            fig_gs02(out, log_dir=args.log_dir)
         elif f == "diskalma":
-            fig_disk_alma(str(module), out, log_dir=args.log_dir,
+            fig_disk_alma(out, log_dir=args.log_dir,
                           alma=args.alma, combine=combine,
                           gal_margin=gal_margin, gal_aspect=gal_aspect,
                           levels=(tuple(args.alma_levels)
                                   if args.alma_levels else None))
         else:
-            fig_gs0304(str(module), out, log_dir=args.log_dir,
+            fig_gs0304(out, log_dir=args.log_dir,
                        rep_epoch=args.rep_epoch, pa_major=args.pa_major,
                        t_span=tuple(args.track_span),
                        prof_sigma=args.profile_sigma,

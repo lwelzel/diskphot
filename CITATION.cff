@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below and the software itself."
+type: software
+title: "diskphot: transit photometry of the HD 107146 debris disk"
+version: 1.0.0
+date-released: 2026-10-08
+license: MIT
+repository-code: "https://github.com/lwelzel/diskphot"
+authors:
+  - family-names: Welzel
+    given-names: Lukas
+    email: welzel@strw.leidenuniv.nl
+    affiliation: "Leiden Observatory, Leiden University"
+keywords:
+  - debris disks
+  - HD 107146
+  - transit photometry
+  - nested sampling
+preferred-citation:
+  type: article
+  title: "Measuring the dust opacity of the debris disk around HD 107146 with transit photometry"
+  authors:
+    - family-names: Welzel
+      given-names: Lukas
+      affiliation: "Leiden Observatory, Leiden University"
+  journal: "Astronomy & Astrophysics"
+  year: 2026
+  # TODO (authors): add volume, pages/article number and DOI once published,
+  # and the Zenodo DOI of the tagged software release.

@@ -7,7 +7,7 @@ Inputs (all inside the UltraNest ``log_dir`` of the production run):
                                     moments, ML point, ESS, ncall, ...)
     chains/equal_weighted_post.txt  equal-weighted posterior samples
     sensitivity.json                single-run prior-sensitivity table
-                                    (written by self_sufficient_ultranest)
+                                    (written by diskphot.run_inference)
     MODEL_CARD.txt                  priors of the run (lam, sigma_g, P,
                                     offset bound, tau' ceiling, noise-scale
                                     range, theta layout)
@@ -38,16 +38,16 @@ are taken from ``<log_dir>/verify.json`` when present, else from
 recorded from the v06 production run's ``verify()`` and are clearly marked
 as such below.
 
-Optional ``--evaluate --module <self_sufficient_ultranest.py>`` re-imports
-the likelihood (requires the data paths of the module to resolve) and
+Optional ``--evaluate`` imports the likelihood (``diskphot.likelihood``;
+requires the data, see ``DISKPHOT_DATA`` in README.md) and
 computes the goodness-of-fit numbers (chi^2 and the mean squared
 standardized residual at the posterior median, under the NOMINAL noise
 model and under the fitted per-epoch noise scales) and the per-epoch
 sightline limits.
 
 Usage:
-    python paper_values.py <log_dir> [--out-dir DIR] [--extras extras.json]
-                           [--evaluate --module path/to/script.py]
+    python -m diskphot.paper_values <log_dir> [--out-dir DIR]
+                                    [--extras extras.json] [--evaluate]
 """
 
 import argparse
@@ -337,7 +337,7 @@ def _sigma_equiv(cred):
 def _zero_exclusion(grid, dens):
     """Credibility of the smallest HPD region that excludes tau=0:
     posterior mass where the density exceeds the density at zero."""
-    _tz = getattr(np, "trapezoid", None) or np.trapz
+    _tz = getattr(np, "trapezoid", None) or np.trapz  # noqa: NPY201
     norm = _tz(dens, grid)
     mask = dens >= dens[0]
     cred = float(_tz(np.where(mask, dens, 0.0), grid) / norm)
@@ -409,9 +409,9 @@ def _find_star_center(model):
     return ((k1 + dx) / 2.0, (k0 + dy) / 2.0)  # (x, y)
 
 
-def evaluate_run(module_path, theta_med, tau_samples, extras, layout):
+def evaluate_run(theta_med, tau_samples, extras, layout):
     """Goodness of fit + per-epoch sightline values via the analysis module
-    (requires the data paths inside the module to resolve).
+    ``diskphot.likelihood`` (requires the data, ``DISKPHOT_DATA``).
 
     All chi^2 / MSR numbers come in two flavours: under the NOMINAL noise
     model (the fixed weights of \\autoref{eq:perpixel_noise}; ``msr``) and
@@ -421,11 +421,9 @@ def evaluate_run(module_path, theta_med, tau_samples, extras, layout):
     coincide.  The template is the one fitted WITH the scales in both
     cases.
     """
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("ssu", module_path)
-    ssu = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(ssu)
     import torch
+
+    from diskphot import likelihood as ssu
 
     obs, disks, masks, var, nominal, q_cut = ssu.load_native_data()
     ll = ssu.LogLikelihood(obs, disks, masks, var, nominal,
@@ -574,8 +572,9 @@ def main(argv=None):
     ap.add_argument("--out-dir", default=None)
     ap.add_argument("--extras", default=None)
     ap.add_argument("--prefix", default="Vg")
-    ap.add_argument("--evaluate", action="store_true")
-    ap.add_argument("--module", default=None)
+    ap.add_argument("--evaluate", action="store_true",
+                    help="re-evaluate the likelihood on the data (goodness "
+                         "of fit, per-epoch sightlines); needs DISKPHOT_DATA")
     args = ap.parse_args(argv)
 
     log_dir = Path(args.log_dir)
@@ -689,10 +688,10 @@ def main(argv=None):
 
     # ---- goodness of fit + sightlines (optional module evaluation) -------
     sightlines = None
-    if args.evaluate and args.module and res.get("posterior") \
+    if args.evaluate and res.get("posterior") \
             and samples is not None and layout:
         try:
-            ev = evaluate_run(args.module, res["posterior"]["median"],
+            ev = evaluate_run(res["posterior"]["median"],
                               samples[:, layout["i_tau"]], extras, layout)
             sightlines = ev.pop("sightlines", None)
             raw["star_xy_fullframe"] = ev.pop("star_xy_fullframe", None)

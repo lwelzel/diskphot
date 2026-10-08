@@ -1,126 +1,32 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-
-# celery beat schedule file
-celerybeat-schedule
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
+build/
+dist/
+.venv/
 venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
+.pytest_cache/
+.ruff_cache/
 .mypy_cache/
-.dmypy.json
-dmypy.json
+.ipynb_checkpoints/
 
-# Pyre type checker
-.pyre/
-
-# diskphot: local scientific data and generated products
-data/raw/
-data/interim/
+# diskphot: local scientific data and generated products (not distributed
+# with the repository; see README.md)
+/data/
+*.fits
 outputs/
+literature_data/
 
-# OS metadata
+# UltraNest run products that are too large to version (the committed run
+# record keeps MODEL_CARD.txt, verify.json, sensitivity.json, extra/, paper/)
+ultranest_run/*/chains/
+ultranest_run/*/results/
+ultranest_run/*/plots/
+ultranest_run/*/info/
+ultranest_run/*/debug.log
+
+# OS / editor metadata
 .DS_Store
-
-# custom
-.fits
-/data
+.idea/
+.vscode/

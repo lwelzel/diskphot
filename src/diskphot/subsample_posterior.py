@@ -37,7 +37,7 @@ If ``<log_dir>`` has no ``chains/`` but contains ``run*/`` subfolders
 (``resume='subfolder'`` runs), the most recent one is used.
 
 Usage:
-    python subsample_posterior.py <log_dir> [-n 2000] [--seed 0]
+    python -m diskphot.subsample_posterior <log_dir> [-n 2000] [--seed 0]
         [--method systematic|equal] [--add-f] [--params tau lnf_0 ...]
         [--out path/without/extension] [--float-fmt %.10g]
 """
@@ -46,10 +46,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -160,8 +159,8 @@ def match_logl(points: np.ndarray, wpoints: np.ndarray, wlogl: np.ndarray):
     """logl for rows of ``points`` by exact match against the weighted
     chain (both files are written from the same array).  NaN if unmatched."""
     lut = {}
-    for row, l in zip(wpoints, wlogl):
-        lut.setdefault(row.tobytes(), l)
+    for row, lnl in zip(wpoints, wlogl):
+        lut.setdefault(row.tobytes(), lnl)
     out = np.full(points.shape[0], np.nan)
     for k, row in enumerate(points):
         v = lut.get(np.ascontiguousarray(row).tobytes())
@@ -260,7 +259,7 @@ def main(argv=None):
 
     side = {
         "source_log_dir": str(log_dir.resolve()),
-        "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "method": args.method, "seed": args.seed,
         "n_rows": int(len(df)),
         "n_weighted_points": int(len(w)), "kish_ess_weighted": ess,

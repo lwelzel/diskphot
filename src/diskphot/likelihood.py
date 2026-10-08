@@ -1,4 +1,14 @@
-"""Current (v0.7) MARGINAL log-likelihood + data loading, one self-sufficient file.
+"""Marginal log-likelihood of the HD 107146 transit photometry, plus data loading.
+
+This module is the statistical model of the paper: the background-galaxy
+template is integrated out in closed form under a Gaussian prior, and the
+remaining parameters (per-epoch registration offsets, per-epoch noise
+scales, one common optical depth tau') are sampled with UltraNest by
+``diskphot.run_inference``.  The revision labels used throughout (v05 =
+profiled likelihood, v06 = marginal likelihood, v07 = marginal likelihood
+with per-epoch noise scales) are the internal names of the model
+revisions and match the run records; the production run of the paper is
+v07.  The notes below document the model and the numerical policy.
 
 v0.7 = v0.6 + PER-EPOCH NOISE-SCALE NUISANCE PARAMETERS (the ARKS f_sigma
 idea).  The v06 production run measured a mean squared standardized
@@ -149,8 +159,9 @@ unaffected by c_data.
 
 Do NOT ``resume`` a v05 (profiled) run directory: the likelihood changed.
 
-NOTE: numerically exercised on synthetic epochs (CPU) by the accompanying
-harness; run ``verify()`` on the real data (wired into __main__) before
+NOTE: ``verify()`` is run on the real data by ``diskphot.run_inference``
+before sampling (its numbers are stored in verify.json next to the run),
+and on synthetic epochs by ``tests/test_likelihood.py``; run it before
 trusting numbers.  Science numbers now come from THIS posterior/evidence
 (plus the f64 ``reference_logl`` re-evaluations); the external calibration
 machinery remains available as a frequentist cross-check.
@@ -158,34 +169,48 @@ machinery remains available as a frequentist cross-check.
 
 import json
 import math
+import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from astropy.io import fits
 from torch import tensor
 from torch.nn import Module
 
-from pathlib import Path
-from astropy.io import fits
-
-torch.set_default_device("cuda:0" if torch.cuda.is_available() else "cpu")
+# Compute device.  Set at import time because the tensor constructors below
+# rely on torch's default device; DISKPHOT_DEVICE (e.g. "cuda:1" or "cpu")
+# overrides the default of the first GPU when one is available.
+torch.set_default_device(
+    os.environ.get("DISKPHOT_DEVICE")
+    or ("cuda:0" if torch.cuda.is_available() else "cpu"))
 
 
 # --------------------------------------------------------------------------- #
-# constants (old style: module level)
+# data location and constants (module level)
 # --------------------------------------------------------------------------- #
-DATA_ROOT = Path("/home/lwelzel/git/diskphot/data")
+# The reduced data are NOT part of the repository (see README.md).  Point
+# DISKPHOT_DATA at a directory with the layout
+#   <DATA_ROOT>/hd107146_reduced/*.fits       per-epoch reduced (AQ, NUP) frames;
+#                                             sorted file names = epoch order
+#   <DATA_ROOT>/hd107146_disk_model/MODEL20_HD107146_16.5_47_h=0.3_NUP.fits
+#   <DATA_ROOT>/galaxy_positions.csv          columns x, y: galaxy position per
+#                                             epoch in full-frame px ('#' comments)
+# The default is ./data relative to the working directory.
+DATA_ROOT = Path(os.environ.get("DISKPHOT_DATA", "data")).expanduser()
 OBS_DIR = DATA_ROOT / "hd107146_reduced"
-DISK_MODEL_PATH = DATA_ROOT / "hd107146_disk_model/MODEL20_HD107146_16.5_47_h=0.3_NUP.fits"
-CSV_PATH = Path("/home/lwelzel/git/diskphot/data/galaxy_positions.csv")
+DISK_MODEL_PATH = (DATA_ROOT / "hd107146_disk_model"
+                   / "MODEL20_HD107146_16.5_47_h=0.3_NUP.fits")
+CSV_PATH = DATA_ROOT / "galaxy_positions.csv"
 
-# UPDATED VALUES FROM THE FITS FILE HEADERS
+# values from the FITS headers of the reduced frames
 DISK_MODEL_SHIFT_XY = (-540.45, -541.08)    # known disk-model -> frame alignment
 CUTOUT = 24                                 # px; pipeline default is 30
 SIGMA_BG = 3.0e-3                           # counts/s/px background RMS
-GAIN = 4.0                                  # CCDGAIN =                    4 / commanded gain of CCD    
-EXPTIMES_S = (1588.0, 1662.8) + (8314.0,) * 6
+GAIN = 4.0                                  # CCDGAIN = 4 (commanded CCD gain)
+EXPTIMES_S = (1588.0, 1662.8) + (8314.0,) * 6   # s, per epoch EP0..EP7
 
 KEYS_A = -0.75              # grid_sample "bicubic" = Keys cubic convolution
 
@@ -287,7 +312,13 @@ def _int_shift(img: torch.Tensor, m: torch.Tensor) -> torch.Tensor:
 # data loading (unchanged from v04)
 # --------------------------------------------------------------------------- #
 def load_observations():
+    """Per-epoch reduced frames (full frames, float32), in file-name order."""
     paths = sorted(OBS_DIR.glob("*.fits"))
+    if not paths:
+        raise FileNotFoundError(
+            f"no reduced frames found in {OBS_DIR}; set DISKPHOT_DATA to the "
+            "data directory (layout documented at the top of "
+            "diskphot/likelihood.py and in README.md)")
     return [tensor(np.squeeze(fits.open(p)[0].data).astype(np.float32)) for p in paths]
 
 
@@ -1618,176 +1649,3 @@ def model_card_text(ll, n_images, offset_halfwidth, tau_hi, tau_soft):
     )
 
 
-# --------------------------------------------------------------------------- #
-if __name__ == "__main__":
-    observations, disk_models, masks, variance, nominal_shift_xy, q_cut = load_native_data()
-    N_IMAGES = observations.shape[0]
-
-    log_likelihood = LogLikelihood(observations, disk_models, masks, variance,
-                                   nominal_shift_xy, noise_scale=True)
-    PARAM_NAMES = param_names(N_IMAGES, noise_scale=log_likelihood.noise_scale)
-    assert len(PARAM_NAMES) == log_likelihood.ndim
-    print(f"template prior: g ~ N(0, lam^-1 I), lam = {log_likelihood.lam:.6e}"
-          f"  (sigma_g = {log_likelihood.template_prior_std:.4e} cts/s/px;"
-          f"  empirical-Bayes scale from the NOMINAL weights, frozen at construction)")
-    print(f"lnL constants: c_data = {log_likelihood._c_data:.6e},"
-          f"  P/2 ln lam = {0.5 * log_likelihood.size**2 * math.log(log_likelihood.lam):.6e}")
-    print("weighted pixels per epoch n_i (coefficients of -ln f_i):",
-          log_likelihood.n_weighted.cpu().numpy().astype(int).tolist())
-
-    truths = torch.zeros(log_likelihood.ndim)  # offsets 0, ln f = 0 (f = 1)
-    truths[-1] = 1.0e-2                    # tau' at the ring peak (not 10!)
-    tile_truths = truths.view(1, -1).tile(2, 1)
-    print("marginal lnL (f32 hot path):", log_likelihood(tile_truths))
-    print("marginal lnL (f64 reference):", log_likelihood.reference_logl(tile_truths))
-    truths_f2 = truths.clone()
-    truths_f2[log_likelihood.i_lnf] = math.log(2.0)
-    print("marginal lnL (f64 reference) at f = 2 for every epoch:",
-          log_likelihood.reference_logl(truths_f2.view(1, -1)))
-
-    # the audit -- run BEFORE trusting fast-path numbers on this data.
-    # In particular check dlogdet_f32_vs_ref / dlnl_marg_f32_vs_ref against
-    # the dlogz budget below; if too large, evaluate through reference_logl.
-    # dlnl_noise_scale_identity must be at roundoff (v07 implementation).
-    audit = log_likelihood.verify()
-
-    # quick-look, old style
-    from matplotlib import pyplot as plt
-
-    residuals, chi = log_likelihood.error_map(truths.view(1, -1))
-    # fig, axes = plt.subplots(3, 3, constrained_layout=True,
-    #                          sharex=True, sharey=True, figsize=(9, 9))
-    # axes = np.array(axes).flatten()
-    # for i in range(N_IMAGES):
-    #     im = axes[i].imshow(chi[0, i].cpu().numpy(), origin="lower",
-    #                         cmap="RdBu_r", vmin=-4, vmax=4)
-    #     axes[i].scatter(q_cut[i, 0], q_cut[i, 1], marker="+", c="k", s=50,
-    #                     linewidths=0.75)
-    #     plt.colorbar(im, ax=axes[i])
-    # axes[-1].axis("off")
-    # plt.show()
-
-    # old-vs-new consistency demo (common grid): correctly weighted pairwise
-    # statistic == profiled chi-square (lam -> 0), same number from two
-    # derivations.  (Profile objects; the marginal adds the volume term.)
-    ll0 = LogLikelihood(observations, disk_models, masks, variance,
-                        torch.zeros(N_IMAGES, 2))
-    print("pairwise (correct weights):", float(ll0.pairwise_chi2(1.0e-2)))
-    print("profiled template (lam->0): ",
-          float(ll0.profiled_chi2(truths.view(1, -1),
-                                  lam=1.0e-12 * ll0._maxdiag_ref)[0]))
-
-    # ------------------------------------------------------------- ultranest
-    # Same hookup as v05; the integrand is now the MARGINAL likelihood, so
-    #  - the samples ARE a posterior and "logz" IS a Bayesian evidence
-    #    under the priors stated in the module docstring (and written to
-    #    MODEL_CARD.txt below);
-    #  - per-evaluation cost is unchanged: the log-determinant is read off
-    #    the same batched f32 Cholesky the solve already performs;
-    #  - the hot path is a deterministic function of theta (fixed lam, no
-    #    warm starts, no iteration knobs), so the run is reproducible;
-    #  - reported values come from reference_logl (f64) regardless; check
-    #    verify()'s dlnl_marg_f32_vs_ref against dlogz before believing
-    #    the evidence error bar;
-    #  - do NOT resume a v05 (profiled) log_dir: the likelihood changed.
-    import ultranest
-    from ultranest.popstepsampler import (
-        PopulationSliceSampler, PopulationSimpleSliceSampler,
-        generate_region_oriented_direction, generate_mixture_random_direction,
-    )
-
-    NDIM = log_likelihood.ndim      # 2 (N-1) offsets + N ln f + tau'
-    N_OFF = log_likelihood.n_offsets
-    I_LNF = log_likelihood.i_lnf
-    OFFSET_HALFWIDTH = 1.5          # px box around the nominal registration
-    TAU_HI = 1.0                    # conservative ceiling; tau=1 is already rejectable
-    TAU_SOFT = 1.0e-2               # scale of the ALTERNATIVE soft-log prior
-                                    # (post-processing reweighting only)
-    LNF_LO, LNF_HI = (math.log(NOISE_SCALE_RANGE[0]),
-                      math.log(NOISE_SCALE_RANGE[1]))
-
-    def prior_transform(cube):
-        params = cube.copy()
-        params[:, :N_OFF] = (2.0 * cube[:, :N_OFF] - 1.0) * OFFSET_HALFWIDTH
-
-        # v07: per-epoch noise scales, ln f_i uniform on [ln lo, ln hi]
-        # (log-uniform f_i: the Jeffreys prior for a scale; the nominal
-        # noise model f = 1 and the empirical sqrt(MSR) ~ 2 of the v06
-        # run both sit well inside).  The ln f block is well constrained
-        # (~1/sqrt(2 n_i) ~ 0.05 wide), so the bounds only need to
-        # contain the answer; the evidence scales with the inverse of
-        # the prior width per epoch.
-        if log_likelihood.noise_scale:
-            params[:, I_LNF] = LNF_LO + cube[:, I_LNF] * (LNF_HI - LNF_LO)
-
-        # FLAT prior on tau' in [0, TAU_HI]: the simplest proper choice
-        # and the conservative one for an upper limit (no upweighting of
-        # the tau' = 0 neighbourhood).  The prior transform is
-        # computationally free either way -- run length is dominated by
-        # the 2*(N-1) offset dimensions, so this choice is statistical,
-        # not a cost item.  The v05 soft-log map (density
-        # 1/[(tau'+TAU_SOFT) ln(1+TAU_HI/TAU_SOFT)], linear near the
-        # null, ~log above TAU_SOFT) is recovered from the SAME run by
-        # prior-ratio reweighting in single_run_sensitivity below.
-        # Under a flat prior the EVIDENCE scales with 1/TAU_HI: state the
-        # ceiling wherever lnZ is quoted.
-        params[:, NDIM - 1] = cube[:, NDIM - 1] * TAU_HI
-        return params
-
-    def wrapper_log_likelihood(theta):
-        theta = torch.as_tensor(np.asarray(theta, dtype=np.float32))
-        with torch.inference_mode():
-            out = log_likelihood(theta)
-        out = out.detach().cpu().numpy().astype(np.float64)
-        return np.where(np.isfinite(out), out, -1.0e30)
-
-    # fresh directory: the v07 likelihood has N more parameters than v06
-    LOG_DIR = "ultranest_run/marginal_common_tau_noisescale_v16"
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    # the audit numbers, machine-readable for paper_values.py (which
-    # otherwise falls back to hard-coded defaults from an older run)
-    (Path(LOG_DIR) / "verify.json").write_text(json.dumps(
-        {k: v for k, v in audit.items() if isinstance(v, float)}, indent=2))
-
-    sampler = ultranest.ReactiveNestedSampler(
-        PARAM_NAMES, wrapper_log_likelihood, prior_transform,
-        vectorized=True,
-        log_dir=LOG_DIR,
-        resume="resume",    # fresh dir above -- never resume a v05/v06 run
-        ndraw_min=128,
-        ndraw_max=1024,
-    )
-    sampler.stepsampler = PopulationSimpleSliceSampler( # PopulationSimpleSliceSampler( # PopulationSliceSampler(
-        popsize=128,        # headroom restored; raise further on big GPUs
-        nsteps=32,
-        generate_direction=generate_mixture_random_direction,
-    )
-    sampler.run(
-        min_num_live_points=521,
-        dlogz=0.5,          # posterior-grade; tighten (e.g. 0.1) if the
-                            # EVIDENCE itself is a headline number
-        min_ess=512,
-        update_interval_volume_fraction=0.4,
-        max_num_improvement_loops=4,
-    )
-    sampler.print_results()
-    sampler.plot() # axes_scale=["linear"] * (NDIM - 1) + ["log"])
-
-    # single-run sensitivity: lam ladder (likelihood reweighting,
-    # f64 reference at the stored points) and the v05 soft-log tau' prior
-    # (prior-ratio reweighting) -- no additional sampling.  Check the ESS
-    # column before quoting any variant.
-    ws = sampler.results["weighted_samples"]
-    single_run_sensitivity(
-        log_likelihood,
-        np.asarray(ws["points"]), np.asarray(ws["weights"]),
-        stored_logl=np.asarray(ws["logl"]) if "logl" in ws else None,
-        tau_soft=TAU_SOFT, tau_hi=TAU_HI,
-        out_path=Path(LOG_DIR) / "sensitivity.json",
-    )
-
-    (Path(LOG_DIR) / "MODEL_CARD.txt").write_text(
-        model_card_text(log_likelihood, N_IMAGES, OFFSET_HALFWIDTH, TAU_HI,
-                        TAU_SOFT))
-    print("note: this run maps the MARGINAL likelihood -- samples are a "
-          "posterior and logz an evidence under the priors in MODEL_CARD.txt")
